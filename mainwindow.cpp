@@ -82,7 +82,7 @@ MainWindow::MainWindow(QWidget *parent)
                                  << "*.jpeg";
 
     d->m_currentSetting =
-        new QSettings(QDir::cleanPath(QApplication::applicationDirPath() + QDir::separator() + "appconfig.ini"),
+        new QSettings(QDir::cleanPath(QDir::homePath() + QDir::separator() + "jxl-batch-converter-config.ini"),
                       QSettings::IniFormat);
 
     libjxlBinDir->setText(d->m_currentSetting->value("execBinDir").toString());

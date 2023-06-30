@@ -386,12 +386,20 @@ void ConversionThread::calculateStats()
 
     if (m_totalBytesInput > 0 && m_totalBytesOutput > 0) {
         const double delta =
-            (static_cast<double>(m_totalBytesOutput) * 1.0) / (static_cast<double>(m_totalBytesInput) * 1.0) * 100.0;
-        const double inKB = static_cast<double>(m_totalBytesInput) / 1000.0;
-        const double outKB = static_cast<double>(m_totalBytesOutput) / 1000.0;
+            ((static_cast<double>(m_totalBytesOutput) * 1.0) / (static_cast<double>(m_totalBytesInput) * 1.0) * 100.0) - 100.0;
+        double inKB = static_cast<double>(m_totalBytesInput) / 1024.0;
+        double outKB = static_cast<double>(m_totalBytesOutput) / 1024.0;
+        QString suffix;
+        if (inKB > 10000.0) {
+            suffix = QString("MiB");
+            inKB = inKB / 1024.0;
+            outKB = outKB / 1024.0;
+        } else {
+            suffix = QString("KiB");
+        }
         const QString diff =
-            QString("Total input: %1 kB<br/>Total output: %2 kB<br/><font color='#ffbbff'>Output-input ratio: %3\%</font><br/><br/>")
-                .arg(QString::number(inKB), QString::number(outKB), QString::number(delta));
+            QString("Total in: %1 %5<br/>Total out: %2 %5<br/><font color='#ffbbff'>Out-in delta: %4%3\%</font><br/><br/>")
+                                 .arg(QString::number(inKB), QString::number(outKB), QString::number(delta), ((delta > 0) ? QString("+") : QString("")), suffix);
         emit sendLogs(diff, false);
     }
 }

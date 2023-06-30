@@ -402,7 +402,7 @@ void MainWindow::convertBtnPressed()
 
     QFileInfo outTestFile(outputFileDir->text());
     if (!outTestFile.isWritable()) {
-        logText->append("<font color='#ff9696'>Error: permission denied!</font>");
+        logText->append("<font color='#ff9696'>Output error: permission denied!</font>");
         resetUi();
         progressBar->setVisible(false);
         return;
@@ -654,7 +654,13 @@ void MainWindow::cjxlChecker()
         d->m_patchVer = versionList.at(2).toInt();
         d->m_fullVer = (d->m_majorVer * 1000000) + (d->m_minorVer * 1000) + (d->m_patchVer);
     } else {
-        logText->append("Warning: cannot determine version");
+        // crude binary checking
+        logText->append("Error: cannot determine cjxl version");
+        selectionTabWdg->setTabEnabled(0, false);
+        printHelpBtn->setEnabled(false);
+        convertBtn->setEnabled(false);
+        d->m_cjxlDir = QString();
+        return;
     }
 
     jxlVersionLabel->setText(cjxlInfo.left(cjxlInfo.indexOf('\n')).trimmed());
@@ -733,6 +739,7 @@ void MainWindow::cjxlChecker()
         }
     }
 
+    selectionTabWdg->setCurrentIndex(0);
     printHelpBtn->setEnabled(true);
     convertBtn->setEnabled(true);
 }

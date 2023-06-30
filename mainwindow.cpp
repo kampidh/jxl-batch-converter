@@ -142,6 +142,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     aboutLabel->setMaximumWidth(selectionTabWdg->width() - 10);
 
+    jxlVersionLabel->setText("Please select directory with libjxl binaries");
+    selectionTabWdg->setTabEnabled(0, false);
+    selectionTabWdg->setTabEnabled(1, false);
+    selectionTabWdg->setTabEnabled(2, false);
+    selectionTabWdg->setTabEnabled(3, false);
+
     convertBtn->setEnabled(false);
     printHelpBtn->setEnabled(false);
     progressBar->setVisible(false);
@@ -614,7 +620,7 @@ void MainWindow::cjxlChecker()
     logText->clear();
 
     QDir rootJxl(libDir);
-    if (!rootJxl.exists(QString("cjxl")) && !rootJxl.exists(QString("cjxl.exe"))) {
+    if (libDir.isEmpty() || (!rootJxl.exists(QString("cjxl")) && !rootJxl.exists(QString("cjxl.exe")))) {
         jxlVersionLabel->setText("Error: cjxl is not found in selected directory!");
         selectionTabWdg->setTabEnabled(0, false);
         selectionTabWdg->setTabEnabled(1, false);

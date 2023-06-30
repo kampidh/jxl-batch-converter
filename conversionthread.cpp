@@ -68,6 +68,10 @@ void ConversionThread::initArgs(const QMap<QString, QString> &args)
             }
         }
 
+        if (mit.key() == "directoryInput") {
+            m_fin = mit.value();
+        }
+
         m_encOpts.insert(mit.key(), mit.value());
     }
 }
@@ -152,13 +156,7 @@ void ConversionThread::run()
     QProcess cjxlBin;
 
     QString inFUrl;
-    if (m_batch) {
-        if (!m_finBatch.isEmpty()) {
-            inFUrl = m_finBatch.back();
-        }
-    } else {
-        inFUrl = m_fin;
-    }
+    inFUrl = m_fin;
 
     QFileInfo inFileFirst(inFUrl);
 

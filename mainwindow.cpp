@@ -422,6 +422,8 @@ void MainWindow::convertBtnPressed()
         return;
     }
 
+    encOptions.insert("directoryInput", inputFileDir->text());
+
     const QString binPath = [&]() {
         switch (selectionTabWdg->currentIndex()) {
         case 0:
@@ -462,6 +464,7 @@ void MainWindow::convertBtnPressed()
     }
 
     if (!batchChk->isChecked()) {
+        // inFUrl will get ignored later tho...
         const QString inFUrl = inputFileDir->text();
         const QString outFUrl = outputFileDir->text();
 

@@ -618,62 +618,83 @@ void MainWindow::dumpProgress(const float &prog)
 
 void MainWindow::cjxlChecker()
 {
+    selectionTabWdg->setTabEnabled(0, false);
+    selectionTabWdg->setTabEnabled(1, false);
+    selectionTabWdg->setTabEnabled(2, false);
+    selectionTabWdg->setTabEnabled(3, false);
+    printHelpBtn->setEnabled(false);
+    convertBtn->setEnabled(false);
+
     const QString libDir = libjxlBinDir->text();
 
     logText->clear();
 
+
+#ifdef Q_OS_WIN
+    const QString binSuffix = QString(".exe");
+#else
+    const QString binSuffix = QString();
+#endif
+
+    QList<int> activeNdx{};
+
     QDir rootJxl(libDir);
     if (libDir.isEmpty() || (!rootJxl.exists(QString("cjxl")) && !rootJxl.exists(QString("cjxl.exe")))) {
         jxlVersionLabel->setText("Error: cjxl is not found in selected directory!");
-        selectionTabWdg->setTabEnabled(0, false);
-        selectionTabWdg->setTabEnabled(1, false);
-        selectionTabWdg->setTabEnabled(2, false);
-        selectionTabWdg->setTabEnabled(3, false);
-        printHelpBtn->setEnabled(false);
-        convertBtn->setEnabled(false);
         d->m_cjxlDir = QString();
-        return;
-    }
-
-    selectionTabWdg->setTabEnabled(0, true);
-
-    const QString cjxlDir = QDir::cleanPath(libDir + QDir::separator() + QString("cjxl"));
-
-    d->m_execBin->start(cjxlDir, QStringList());
-    if (!d->m_execBin->waitForFinished()) {
-        printHelpBtn->setEnabled(false);
-        convertBtn->setEnabled(false);
-        return;
-    }
-
-    QString cjxlInfo;
-    cjxlInfo = d->m_execBin->readAllStandardError();
-
-    d->m_cjxlDir = cjxlDir;
-
-    int vPos = cjxlInfo.indexOf('v');
-    QString versionTrimLeft = cjxlInfo.mid(vPos); // silencing clazy because 5.15 don't have midRef...
-    int spPos = versionTrimLeft.indexOf(' ');
-    QString versionTrim = cjxlInfo.mid(vPos + 1, spPos - 1);
-
-    QStringList versionList = versionTrim.trimmed().split('.');
-    if (versionList.size() == 3) {
-        d->m_majorVer = versionList.at(0).toInt();
-        d->m_minorVer = versionList.at(1).toInt();
-        d->m_patchVer = versionList.at(2).toInt();
-        d->m_fullVer = (d->m_majorVer * 1000000) + (d->m_minorVer * 1000) + (d->m_patchVer);
     } else {
-        // crude binary checking
-        logText->append("Error: cannot determine cjxl version");
-        selectionTabWdg->setTabEnabled(0, false);
-        printHelpBtn->setEnabled(false);
-        convertBtn->setEnabled(false);
-        d->m_cjxlDir = QString();
-        return;
-    }
+      const QString cjxlDir = QDir::cleanPath(libDir + QDir::separator() +
+                                              QString("cjxl") + binSuffix);
 
-    jxlVersionLabel->setText(cjxlInfo.left(cjxlInfo.indexOf('\n')).trimmed());
-    d->m_cjxlVerString = cjxlInfo.left(cjxlInfo.indexOf('\n')).trimmed();
+      QFileInfo cjxlFile(cjxlDir);
+      if (!cjxlFile.isExecutable()) {
+        jxlVersionLabel->setText("Error: cjxl is found but not executable!");
+        logText->append("Error: cjxl is found but not executable!");
+        d->m_cjxlDir = QString();
+      } else {
+        d->m_execBin->start(cjxlDir, QStringList());
+        if (!d->m_execBin->waitForFinished()) {
+          printHelpBtn->setEnabled(false);
+          convertBtn->setEnabled(false);
+          return;
+        }
+
+        QString cjxlInfo;
+        cjxlInfo = d->m_execBin->readAllStandardError();
+
+        d->m_cjxlDir = cjxlDir;
+
+        int vPos = cjxlInfo.indexOf('v');
+        QString versionTrimLeft = cjxlInfo.mid(
+            vPos); // silencing clazy because 5.15 don't have midRef...
+        int spPos = versionTrimLeft.indexOf(' ');
+        QString versionTrim = cjxlInfo.mid(vPos + 1, spPos - 1);
+
+        QStringList versionList = versionTrim.trimmed().split('.');
+        if (versionList.size() == 3) {
+          d->m_majorVer = versionList.at(0).toInt();
+          d->m_minorVer = versionList.at(1).toInt();
+          d->m_patchVer = versionList.at(2).toInt();
+          d->m_fullVer = (d->m_majorVer * 1000000) + (d->m_minorVer * 1000) +
+                         (d->m_patchVer);
+        } else {
+          // crude binary checking
+          logText->append("Error: cannot determine cjxl version");
+          selectionTabWdg->setTabEnabled(0, false);
+          printHelpBtn->setEnabled(false);
+          convertBtn->setEnabled(false);
+          d->m_cjxlDir = QString();
+          return;
+        }
+
+        jxlVersionLabel->setText(
+            cjxlInfo.left(cjxlInfo.indexOf('\n')).trimmed());
+        d->m_cjxlVerString = cjxlInfo.left(cjxlInfo.indexOf('\n')).trimmed();
+
+        selectionTabWdg->setTabEnabled(0, true);
+        activeNdx.append(0);
+      }
+    }
 
     // djxl checker
 
@@ -683,18 +704,27 @@ void MainWindow::cjxlChecker()
         d->m_djxlVerString = QString();
         d->m_djxlDir = QString();
     } else {
-        const QString djxlDir = QDir::cleanPath(libDir + QDir::separator() + QString("djxl"));
+        const QString djxlDir = QDir::cleanPath(libDir + QDir::separator() + QString("djxl") + binSuffix);
         d->m_djxlDir = djxlDir;
-        selectionTabWdg->setTabEnabled(1, true);
 
-        d->m_execBin->start(djxlDir, QStringList());
-        d->m_execBin->waitForFinished();
+        QFileInfo djxlFile(djxlDir);
+        if (!djxlFile.isExecutable()) {
+            logText->append("Error: djxl is found but not executable!");
+            d->m_djxlDir = QString();
+            selectionTabWdg->setTabEnabled(1, false);
+        } else {
+            d->m_execBin->start(djxlDir, QStringList());
+            d->m_execBin->waitForFinished();
 
-        QString djxlInfo;
-        djxlInfo = d->m_execBin->readAllStandardError();
+            QString djxlInfo;
+            djxlInfo = d->m_execBin->readAllStandardError();
 
-        if (!djxlInfo.isEmpty()) {
-            d->m_djxlVerString = djxlInfo.left(djxlInfo.indexOf('\n')).trimmed();
+            if (!djxlInfo.isEmpty()) {
+                d->m_djxlVerString = djxlInfo.left(djxlInfo.indexOf('\n')).trimmed();
+            }
+
+            selectionTabWdg->setTabEnabled(1, true);
+            activeNdx.append(1);
         }
     }
 
@@ -706,20 +736,29 @@ void MainWindow::cjxlChecker()
         d->m_cjpegliVerString = QString();
         d->m_cjpegliDir = QString();
     } else {
-        const QString cjpegliDir = QDir::cleanPath(libDir + QDir::separator() + QString("cjpegli"));
+        const QString cjpegliDir = QDir::cleanPath(libDir + QDir::separator() + QString("cjpegli") + binSuffix);
         d->m_cjpegliDir = cjpegliDir;
-        selectionTabWdg->setTabEnabled(2, true);
 
-        d->m_execBin->start(cjpegliDir, QStringList());
-        d->m_execBin->waitForFinished();
-
-        QString cjpegliInfo;
-        cjpegliInfo = d->m_execBin->readAllStandardError();
-
-        if (!cjpegliInfo.isEmpty()) {
-            d->m_cjpegliVerString = cjpegliInfo.left(cjpegliInfo.indexOf('\n')).trimmed();
+        QFileInfo cjpegliFile(cjpegliDir);
+        if (!cjpegliFile.isExecutable()) {
+            logText->append("Error: cjpegli is found but not executable!");
+            d->m_cjpegliDir = QString();
+            selectionTabWdg->setTabEnabled(2, false);
         } else {
-            d->m_cjpegliVerString = QString("cjpegli found");
+            d->m_execBin->start(cjpegliDir, QStringList());
+            d->m_execBin->waitForFinished();
+
+            QString cjpegliInfo;
+            cjpegliInfo = d->m_execBin->readAllStandardError();
+
+            if (!cjpegliInfo.isEmpty()) {
+                d->m_cjpegliVerString = cjpegliInfo.left(cjpegliInfo.indexOf('\n')).trimmed();
+            } else {
+                d->m_cjpegliVerString = QString("cjpegli found");
+            }
+
+            selectionTabWdg->setTabEnabled(2, true);
+            activeNdx.append(2);
         }
     }
 
@@ -731,24 +770,38 @@ void MainWindow::cjxlChecker()
         d->m_djpegliVerString = QString();
         d->m_djpegliDir = QString();
     } else {
-        const QString djpegliDir = QDir::cleanPath(libDir + QDir::separator() + QString("djpegli"));
+        const QString djpegliDir = QDir::cleanPath(libDir + QDir::separator() + QString("djpegli") + binSuffix);
         d->m_djpegliDir = djpegliDir;
-        selectionTabWdg->setTabEnabled(3, true);
 
-        d->m_execBin->start(djpegliDir, QStringList());
-        d->m_execBin->waitForFinished();
-
-        QString djpegliInfo;
-        djpegliInfo = d->m_execBin->readAllStandardError();
-
-        if (!djpegliInfo.isEmpty()) {
-            d->m_djpegliVerString = djpegliInfo.left(djpegliInfo.indexOf('\n')).trimmed();
+        QFileInfo djpegliFile(djpegliDir);
+        if (!djpegliFile.isExecutable()) {
+            logText->append("Error: djpegli is found but not executable!");
+            d->m_djpegliDir = QString();
+            selectionTabWdg->setTabEnabled(3, false);
         } else {
-            d->m_djpegliVerString = QString("djpegli found");
+            d->m_execBin->start(djpegliDir, QStringList());
+            d->m_execBin->waitForFinished();
+
+            QString djpegliInfo;
+            djpegliInfo = d->m_execBin->readAllStandardError();
+
+            if (!djpegliInfo.isEmpty()) {
+                d->m_djpegliVerString = djpegliInfo.left(djpegliInfo.indexOf('\n')).trimmed();
+            } else {
+                d->m_djpegliVerString = QString("djpegli found");
+            }
+
+            selectionTabWdg->setTabEnabled(3, true);
+            activeNdx.append(3);
         }
     }
 
-    selectionTabWdg->setCurrentIndex(0);
-    printHelpBtn->setEnabled(true);
-    convertBtn->setEnabled(true);
+    if (!activeNdx.isEmpty()) {
+        const int leftmostTab = activeNdx.first();
+        selectionTabWdg->setCurrentIndex(leftmostTab);
+        printHelpBtn->setEnabled(true);
+        convertBtn->setEnabled(true);
+    } else {
+        selectionTabWdg->setCurrentIndex(selectionTabWdg->count() - 1);
+    }
 }

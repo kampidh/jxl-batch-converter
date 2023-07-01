@@ -319,19 +319,14 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         }
     }
 
+    const bool haveErrors = (cjxlBin.exitCode() != 0);
+
     static const QRegularExpression newLines("\n|\r\n|\r");
-    static const QRegularExpression errorWords("\\bfailed\\b|"
-                                                "\\berror\\b|"
-                                                "\\binvalid\\b|"
-                                                "\\bmust not\\b|"
-                                                "\\bcan't\\b",
-                                               QRegularExpression::CaseInsensitiveOption);
     static const QRegularExpression regNum("[^0-9.]");
 
     const QString rawString = cjxlBin.readAllStandardError().trimmed();
-    QString errString = rawString;
-    const QString buffer = errString.replace(newLines, "<br/>");
-    const bool haveErrors = buffer.contains(errorWords);
+    const QStringList rawStrList = rawString.split(newLines, Qt::SkipEmptyParts);
+    const QString buffer = rawStrList.join("<br/>");
 
     const QString textColor = [&]() {
         if (haveErrors)
@@ -347,7 +342,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         emit sendLogs(rawStd, false);
     }
 
-    const QString lastLine = rawString.split('\n').last();
+    const QString lastLine = rawStrList.last();
     if (lastLine.contains("MP/s", Qt::CaseInsensitive)) {
         const int fr = lastLine.indexOf(',');
         const int bc = lastLine.indexOf('[');

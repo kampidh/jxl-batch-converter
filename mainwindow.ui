@@ -992,7 +992,7 @@ Press &quot;Print help&quot; to see available flags.</string>
        </widget>
       </item>
       <item>
-       <widget class="QGroupBox" name="groupBox_5">
+       <widget class="QGroupBox" name="addGlbSetGrp">
         <property name="title">
          <string>Additional global setting:</string>
         </property>

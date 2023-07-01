@@ -298,7 +298,7 @@ void MainWindow::convertBtnPressed()
     abortBtn->setEnabled(true);
     convOptBox->setEnabled(false);
     selectionTabWdg->setEnabled(false);
-    glbTimeoutSpinBox->setEnabled(false);
+    addGlbSetGrp->setEnabled(false);
 
     d->m_numFiles = 0;
     d->m_numError = 0;
@@ -599,7 +599,7 @@ void MainWindow::resetUi()
     fileinfoBox->setEnabled(true);
     abortBtn->setEnabled(false);
     convOptBox->setEnabled(true);
-    glbTimeoutSpinBox->setEnabled(true);
+    addGlbSetGrp->setEnabled(true);
 }
 
 void MainWindow::dirChkChange()

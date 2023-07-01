@@ -367,7 +367,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
     if (haveErrors && m_stopOnError && m_batch) {
       emit sendLogs(
           QString(
-              "<font color='#ff9696'>Aborted: Batch set to stop on error</font><br/><br/>"),
+              "<br/><font color='#ff9696'>Aborted: Batch set to stop on error</font><br/><br/>"),
           false);
       return false;
     }

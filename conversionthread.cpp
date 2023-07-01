@@ -11,6 +11,10 @@
 #include <QMapIterator>
 #include <QRegularExpression>
 
+#define TICKS 1
+#define TICKS_MULTIPLIER 10
+#define POLL_RATE_MS 100
+
 ConversionThread::ConversionThread(QObject *parent)
     : QThread(parent)
 {
@@ -78,6 +82,8 @@ void ConversionThread::initArgs(const QMap<QString, QString> &args)
 
         m_encOpts.insert(mit.key(), mit.value());
     }
+
+    startTimer(TICKS * TICKS_MULTIPLIER);
 }
 
 void ConversionThread::processFiles(const QString &cjxlbin,
@@ -147,6 +153,7 @@ void ConversionThread::resetValues()
     m_globalTimeout = 0;
     m_totalBytesInput = 0;
     m_totalBytesOutput = 0;
+    m_ticks = 0;
 }
 
 void ConversionThread::run()
@@ -299,11 +306,14 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
     cjxlBin.start(m_cjxlbin, arg);
 
     const bool haveTimeout = (m_globalTimeout > 0);
-    const qint64 timeout = m_globalTimeout * 1000;
-    qint64 mSecs = 0;
-    // poll the abort every 10ms
-    while (!cjxlBin.waitForFinished(10)) {
-        mSecs += 10;
+    const qint64 timeout = m_globalTimeout * (1000 / (TICKS * TICKS_MULTIPLIER));
+
+    mutex.lock();
+    m_ticks = 0;
+    mutex.unlock();
+
+    // poll the abort every defined poll rate
+    do {
         if (m_abort) {
             cjxlBin.kill();
             cjxlBin.waitForFinished(5000);
@@ -311,7 +321,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
             return false;
         }
         if (haveTimeout) {
-            if (mSecs > timeout) {
+            if (m_ticks > timeout) {
                 cjxlBin.kill();
                 cjxlBin.waitForFinished(5000);
                 emit sendLogs(
@@ -322,7 +332,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
                 return true;
             }
         }
-    }
+    } while (!cjxlBin.waitForFinished(POLL_RATE_MS));
 
     const bool haveErrors = (cjxlBin.exitCode() != 0);
 
@@ -420,4 +430,17 @@ void ConversionThread::stopProcess()
     mutex.lock();
     m_abort = true;
     mutex.unlock();
+}
+
+void ConversionThread::timerEvent(QTimerEvent *event)
+{
+    Q_UNUSED(event);
+
+    mutex.lock();
+    m_ticks++;
+    mutex.unlock();
+
+    if (isFinished()) {
+        killTimer(event->timerId());
+    }
 }

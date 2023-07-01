@@ -13,6 +13,7 @@
 #include <QMutex>
 #include <QMap>
 #include <QWaitCondition>
+#include <QTimerEvent>
 
 class ConversionThread : public QThread
 {
@@ -33,6 +34,7 @@ public slots:
 
 protected:
     void run() override;
+    void timerEvent(QTimerEvent *event) override;
 
 private:
     void initArgs(const QMap<QString, QString> &args);
@@ -53,6 +55,7 @@ private:
     uint m_globalTimeout = 0;
     qint64 m_totalBytesInput = 0;
     qint64 m_totalBytesOutput = 0;
+    qint64 m_ticks = 0;
 
     QString m_cjxlbin;
     QString m_fin;

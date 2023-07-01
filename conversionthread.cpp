@@ -339,7 +339,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         return QString("32ff96");
     }();
 
-    const QString formattedErr = QString("<font color='#%2'>%1</font><br/><br/>").arg(buffer, textColor);
+    const QString formattedErr = QString("<font color='#%2'>%1</font><br/>").arg(buffer, textColor);
     emit sendLogs(formattedErr, haveErrors);
 
     const QString rawStd = cjxlBin.readAllStandardOutput();
@@ -377,6 +377,11 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
     if (inFile.exists() && outFile.exists() && !m_disableOutput) {
         m_totalBytesInput += inFile.size();
         m_totalBytesOutput += outFile.size();
+
+        const QString outFileStr = QString("Output:\n%1\n").arg(fout);
+        emit sendLogs(outFileStr, false);
+    } else {
+        emit sendLogs(QString(), false);
     }
 
     return true;

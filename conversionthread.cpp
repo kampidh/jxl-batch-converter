@@ -56,6 +56,10 @@ void ConversionThread::initArgs(const QMap<QString, QString> &args)
             m_globalTimeout = mit.value().toUInt();
         }
 
+        if (mit.key() == "globalStopOnError" && mit.value() == "1") {
+            m_stopOnError = true;
+        }
+
         if (mit.key() == "customFlags") {
             if (mit.value().contains("disable_output")) {
                 m_disableOutput = true;
@@ -133,6 +137,7 @@ void ConversionThread::resetValues()
     m_isOverwrite = false;
     m_isSilent = false;
     m_disableOutput = false;
+    m_stopOnError = false;
     m_haveCustomArgs = false;
 
     m_customArgs.clear();
@@ -357,6 +362,14 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
             m_mpsSamples++;
             m_averageMps = m_averageMps + mps;
         }
+    }
+
+    if (haveErrors && m_stopOnError && m_batch) {
+      emit sendLogs(
+          QString(
+              "<font color='#ff9696'>Aborted: Batch set to stop on error</font><br/><br/>"),
+          false);
+      return false;
     }
 
     QFileInfo inFile(fin);

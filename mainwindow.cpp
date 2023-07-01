@@ -133,6 +133,7 @@ MainWindow::MainWindow(QWidget *parent)
     custJpegliOutFlagTxt->appendPlainText(d->m_currentSetting->value("customJpegliOutFlagsStr").toString());
 
     glbTimeoutSpinBox->setValue(d->m_currentSetting->value("globalTimeout").toUInt());
+    stopOnErrorchkBox->setChecked(d->m_currentSetting->value("stopOnError", false).toBool());
 
     distanceSpinBox->setEnabled(distanceRadio->isChecked());
     qualitySpinBox->setEnabled(qualityRadio->isChecked());
@@ -222,6 +223,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     d->m_currentSetting->setValue("customJpegliOutFlagsStr", custJpegliOutFlagTxt->toPlainText());
 
     d->m_currentSetting->setValue("globalTimeout", glbTimeoutSpinBox->value());
+    d->m_currentSetting->setValue("stopOnError", stopOnErrorchkBox->isChecked());
 
     event->accept();
 }
@@ -396,6 +398,7 @@ void MainWindow::convertBtnPressed()
     encOptions.insert("overwrite", (overwriteChkBox->isChecked() ? "1" : "0"));
     encOptions.insert("silent", (silenceChkBox->isChecked() ? "1" : "0"));
     encOptions.insert("globalTimeout", QString::number(glbTimeoutSpinBox->value()));
+    encOptions.insert("globalStopOnError", (stopOnErrorchkBox->isChecked() ? "1" : "0"));
 
     QDir outUrl(outputFileDir->text());
     if (!outUrl.exists()) {

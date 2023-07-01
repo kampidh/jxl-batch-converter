@@ -45,6 +45,7 @@ private:
     bool m_isOverwrite = false;
     bool m_isSilent = false;
     bool m_disableOutput = false;
+    bool m_stopOnError = false;
     bool m_haveCustomArgs = false;
 
     double m_averageMps = 0.0;

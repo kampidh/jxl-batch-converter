@@ -975,6 +975,25 @@ Press &quot;Print help&quot; to see available flags.</string>
            </widget>
           </item>
           <item>
+           <widget class="QGroupBox" name="groupBox_5">
+            <property name="title">
+             <string>Additional global setting:</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_16">
+             <item>
+              <widget class="QCheckBox" name="stopOnErrorchkBox">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;By default, batch mode will continue to process remaining images even when errors are present.&lt;/p&gt;&lt;p&gt;This option will stop the whole process when errors are caught.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="text">
+                <string>Stop on errors</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
            <spacer name="verticalSpacer_3">
             <property name="orientation">
              <enum>Qt::Vertical</enum>

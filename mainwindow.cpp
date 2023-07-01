@@ -134,6 +134,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     glbTimeoutSpinBox->setValue(d->m_currentSetting->value("globalTimeout").toUInt());
     stopOnErrorchkBox->setChecked(d->m_currentSetting->value("stopOnError", false).toBool());
+    maxLinesSpinBox->setValue(d->m_currentSetting->value("maxLogLines", 1000).toInt());
+
+    logText->document()->setMaximumBlockCount(maxLinesSpinBox->value());
 
     distanceSpinBox->setEnabled(distanceRadio->isChecked());
     qualitySpinBox->setEnabled(qualityRadio->isChecked());
@@ -224,6 +227,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
     d->m_currentSetting->setValue("globalTimeout", glbTimeoutSpinBox->value());
     d->m_currentSetting->setValue("stopOnError", stopOnErrorchkBox->isChecked());
+    d->m_currentSetting->setValue("maxLogLines", maxLinesSpinBox->value());
 
     event->accept();
 }
@@ -299,6 +303,9 @@ void MainWindow::convertBtnPressed()
     convOptBox->setEnabled(false);
     selectionTabWdg->setEnabled(false);
     addGlbSetGrp->setEnabled(false);
+    maxLinesSpinBox->setEnabled(false);
+
+    logText->document()->setMaximumBlockCount(maxLinesSpinBox->value());
 
     d->m_numFiles = 0;
     d->m_numError = 0;
@@ -583,6 +590,7 @@ void MainWindow::resetUi()
     const float decodeTime = d->m_eTimer.elapsed() / 1000.0;
 
     if (d->m_numFiles > 0) {
+        logText->setTextColor(Qt::white);
         logText->append(QString("Conversion done for %1 image(s)").arg(QString::number(d->m_numFiles)));
         if (d->m_numError > 0) {
             logText->append(
@@ -590,6 +598,7 @@ void MainWindow::resetUi()
         } else {
             logText->append("All image(s) successfully converted");
         }
+        logText->setTextColor(Qt::white);
         logText->append(QString("Elapsed time: %1 second(s)").arg(QString::number(decodeTime)));
     }
 
@@ -600,6 +609,7 @@ void MainWindow::resetUi()
     abortBtn->setEnabled(false);
     convOptBox->setEnabled(true);
     addGlbSetGrp->setEnabled(true);
+    maxLinesSpinBox->setEnabled(true);
 }
 
 void MainWindow::dirChkChange()
@@ -619,6 +629,7 @@ void MainWindow::dumpLogs(const QString &logs, const bool &isErr)
     if (logs.contains("Processing")) {
         d->m_numFiles++;
     }
+    logText->setTextColor(Qt::white);
     logText->append(logs);
 }
 

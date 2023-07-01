@@ -567,6 +567,15 @@ void MainWindow::tabIndexChanged(const int &index)
     default:
         break;
     }
+
+    if (index == selectionTabWdg->count() - 1) {
+        jxlVersionLabel->setText("About");
+        convertBtn->setEnabled(false);
+        printHelpBtn->setEnabled(false);
+    } else {
+        convertBtn->setEnabled(true);
+        printHelpBtn->setEnabled(true);
+    }
 }
 
 void MainWindow::resetUi()

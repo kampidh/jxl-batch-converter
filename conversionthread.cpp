@@ -317,7 +317,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         if (m_abort) {
             cjxlBin.kill();
             cjxlBin.waitForFinished(5000);
-            emit sendLogs(QString("<font color='#ff9696'>Aborted</font><br/><br/>"), true);
+            emit sendLogs(QString("<font color='#ff9696'>Aborted</font><br/><br/>"), false);
             return false;
         }
         if (haveTimeout) {
@@ -326,9 +326,9 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
                 cjxlBin.waitForFinished(5000);
                 emit sendLogs(
                     QString(
-                        "<font color='#ff9696'>Aborted: Process exceeding set timeout of %1 second(s)</font><br/><br/>")
+                        "<font color='#ffff64'>Skipped: Process exceeding set timeout of %1 second(s)</font><br/><br/>")
                         .arg(QString::number(m_globalTimeout)),
-                    true);
+                    false);
                 return true;
             }
         }

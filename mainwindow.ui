@@ -1033,7 +1033,7 @@ Press &quot;Print help&quot; to see available flags.</string>
          <item>
           <widget class="QCheckBox" name="stopOnErrorchkBox">
            <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;By default, batch mode will continue to process remaining images even when errors are present.&lt;/p&gt;&lt;p&gt;This option will stop the whole process when errors are caught.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;By default, batch mode will continue to process remaining images even when errors are present.&lt;/p&gt;&lt;p&gt;This option will stop the whole process when errors are caught, however timeout warnings set by the value below will still get skipped.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="text">
             <string>Stop on errors</string>

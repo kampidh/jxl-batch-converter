@@ -7,6 +7,9 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "logcodes.h"
+
+#include <QColor>
 #include <QMainWindow>
 
 #include "ui_mainwindow.h"
@@ -38,7 +41,7 @@ private slots:
 
     void resetUi();
     void dirChkChange();
-    void dumpLogs(const QString &logs, const bool &isErr);
+    void dumpLogs(const QString &logs, const QColor &col, const LogCode &isErr);
     void dumpProgress(const float &prog);
 };
 #endif // MAINWINDOW_H

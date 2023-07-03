@@ -5,12 +5,16 @@
  **/
 
 #include "mainwindow.h"
+#include "logcodes.h"
 
 #include <QApplication>
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+
+    qRegisterMetaType<LogCode>();
+
     MainWindow w;
     w.show();
     return a.exec();

@@ -113,6 +113,9 @@
          <string notr="true">background-color: rgb(24, 24, 32);
 color: rgb(255, 255, 255);</string>
         </property>
+        <property name="tabStopDistance">
+         <double>20.000000000000000</double>
+        </property>
        </widget>
       </item>
       <item>

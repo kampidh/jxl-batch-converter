@@ -15,6 +15,7 @@ SOURCES += \
 
 HEADERS += \
     conversionthread.h \
+    logcodes.h \
     mainwindow.h
 
 FORMS += \

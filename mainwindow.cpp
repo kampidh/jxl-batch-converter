@@ -45,7 +45,10 @@ public:
     QSettings *m_currentSetting;
 
     int m_numFiles = 0;
-    int m_numError = 0;
+    int m_numEncodeError = 0;
+    int m_numFolderError = 0;
+    int m_numSkippedWarning = 0;
+    int m_numTimeoutWarning = 0;
 };
 
 MainWindow::MainWindow(QWidget *parent)
@@ -170,7 +173,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(selectionTabWdg, SIGNAL(currentChanged(int)), this, SLOT(tabIndexChanged(int)));
 
     connect(abortBtn, SIGNAL(clicked(bool)), &d->m_thread, SLOT(stopProcess()));
-    connect(&d->m_thread, SIGNAL(sendLogs(QString, bool)), this, SLOT(dumpLogs(QString, bool)));
+    connect(&d->m_thread, SIGNAL(sendLogs(QString, QColor, LogCode)), this, SLOT(dumpLogs(QString, QColor, LogCode)));
     connect(&d->m_thread, SIGNAL(sendProgress(float)), this, SLOT(dumpProgress(float)));
     connect(&d->m_thread, SIGNAL(finished()), this, SLOT(resetUi()));
 
@@ -308,7 +311,10 @@ void MainWindow::convertBtnPressed()
     logText->document()->setMaximumBlockCount(maxLinesSpinBox->value());
 
     d->m_numFiles = 0;
-    d->m_numError = 0;
+    d->m_numEncodeError = 0;
+    d->m_numFolderError = 0;
+    d->m_numSkippedWarning = 0;
+    d->m_numTimeoutWarning = 0;
 
     d->m_eTimer.start();
 
@@ -590,16 +596,51 @@ void MainWindow::resetUi()
     const float decodeTime = d->m_eTimer.elapsed() / 1000.0;
 
     if (d->m_numFiles > 0) {
+        const QString separator("=----------------=");
+
+        logText->setTextColor(Qt::darkGray);
+        logText->append(separator);
+
         logText->setTextColor(Qt::white);
+
+        bool haveError = false;
         logText->append(QString("Conversion done for %1 image(s)").arg(QString::number(d->m_numFiles)));
-        if (d->m_numError > 0) {
-            logText->append(
-                QString("<font color='#ff9696'>Possible error(s): %1</font>").arg(QString::number(d->m_numError)));
-        } else {
-            logText->append("All image(s) successfully converted");
+
+        if (d->m_numEncodeError > 0) {
+            haveError = true;
+            logText->setTextColor(errLogCol);
+            logText->append(QString("\t%1 libjxl processing error(s)").arg(QString::number(d->m_numEncodeError)));
         }
+
+        if (d->m_numFolderError > 0) {
+            haveError = true;
+            logText->setTextColor(errLogCol);
+            logText->append(QString("\t%1 output folder creation error(s)").arg(QString::number(d->m_numFolderError)));
+        }
+
+        if (d->m_numSkippedWarning > 0) {
+            logText->setTextColor(warnLogCol);
+            logText->append(QString("\t%1 skipped existing file(s)").arg(QString::number(d->m_numSkippedWarning)));
+        }
+
+        if (d->m_numTimeoutWarning > 0) {
+            logText->setTextColor(warnLogCol);
+            logText->append(QString("\t%1 process timeout(s)").arg(QString::number(d->m_numTimeoutWarning)));
+        }
+
         logText->setTextColor(Qt::white);
-        logText->append(QString("Elapsed time: %1 second(s)").arg(QString::number(decodeTime)));
+
+        if (!haveError) {
+            logText->append("All image(s) successfully converted");
+        } else {
+            logText->append("Some image(s) have errors during conversion");
+        }
+
+        logText->append(QString("\nElapsed time: %1 second(s)").arg(QString::number(decodeTime)));
+        logText->setTextColor(Qt::darkGray);
+        logText->append(separator);
+
+        logText->setTextColor(Qt::white);
     }
 
     selectionTabWdg->setEnabled(true);
@@ -621,16 +662,32 @@ void MainWindow::dirChkChange()
     }
 }
 
-void MainWindow::dumpLogs(const QString &logs, const bool &isErr)
+void MainWindow::dumpLogs(const QString &logs, const QColor &col, const LogCode &isErr)
 {
-    if (isErr) {
-        d->m_numError++;
-    }
-    if (logs.contains("Processing")) {
+    switch (isErr) {
+    case LogCode::FILE_IN:
         d->m_numFiles++;
+        break;
+    case LogCode::ENCODE_ERR:
+        d->m_numEncodeError++;
+        break;
+    case LogCode::OUT_FOLDER_ERR:
+        d->m_numFolderError++;
+        break;
+    case LogCode::SKIPPED:
+        d->m_numSkippedWarning++;
+        break;
+    case LogCode::SKIPPED_TIMEOUT:
+        d->m_numTimeoutWarning++;
+        break;
+    default:
+        break;
     }
-    logText->setTextColor(Qt::white);
-    logText->append(logs);
+
+    if (!logs.isEmpty()) {
+        logText->setTextColor(col);
+        logText->append(logs);
+    }
 }
 
 void MainWindow::dumpProgress(const float &prog)

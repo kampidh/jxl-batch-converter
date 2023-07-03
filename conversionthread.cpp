@@ -187,6 +187,12 @@ void ConversionThread::run()
         int sizeIter = 1;
         const int batchSize = m_finBatch.size();
         for (const QString &fin : qAsConst(m_finBatch)) {
+            if (m_abort) {
+                emit sendLogs(QString("Aborted\n"), errLogCol, LogCode::INFO);
+                calculateStats();
+                return;
+            }
+
             const QFileInfo inFile(fin);
 
             const QString extraDirName = QString(inFile.absolutePath()).remove(basePath);
@@ -194,9 +200,9 @@ void ConversionThread::run()
             if (!outFUrl.exists()) {
                 if(!outFUrl.mkpath(".")) {
                     const QString head = QString("Processing image(s) %2/%3:\n%1").arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
-                    emit sendLogs(head, false);
-                    emit sendLogs(QString("<font color='#ff9696'>Failed to create subfolder at %1</font>").arg(outFUrl.absolutePath()), true);
-                    emit sendLogs(QString("<font color='#ff9696'>Skipping...</font><br>"), false);
+                    emit sendLogs(head, Qt::white, LogCode::FILE_IN);
+                    emit sendLogs(QString("Failed to create subfolder at %1").arg(outFUrl.absolutePath()), errLogCol, LogCode::OUT_FOLDER_ERR);
+                    emit sendLogs(QString("Skipping..."), errLogCol, LogCode::INFO);
 
                     sizeIter++;
                     const float progress = (sizeIter * 1.0 / batchSize * 1.0) * 100.0;
@@ -213,9 +219,12 @@ void ConversionThread::run()
             if (!m_isOverwrite && outFile.exists()) {
                 if (!m_isSilent) {
                     const QString head = QString("Processing image(s) %2/%3:\n%1").arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
-                    emit sendLogs(head, false);
+                    emit sendLogs(head, Qt::white, LogCode::FILE_IN);
 
-                    emit sendLogs(QString("<font color='#ffff64'>Skipped, output file already exists</font><br>"), false);
+                    emit sendLogs(QString("Skipped, output file already exists\n"), warnLogCol, LogCode::SKIPPED);
+                } else {
+                    emit sendLogs(QString(), Qt::white, LogCode::FILE_IN);
+                    emit sendLogs(QString(), warnLogCol, LogCode::SKIPPED);
                 }
 
                 sizeIter++;
@@ -225,7 +234,7 @@ void ConversionThread::run()
                 continue;
             } else {
                 const QString head = QString("Processing image(s) %2/%3:\n%1").arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
-                emit sendLogs(head, false);
+                emit sendLogs(head, Qt::white, LogCode::FILE_IN);
             }
 
             if (!runCjxl(cjxlBin, inFile, outFPath)) {
@@ -247,16 +256,19 @@ void ConversionThread::run()
         if (!m_isOverwrite && outFile.exists()) {
             if (!m_isSilent) {
                 const QString head = QString("Processing: %1").arg(inFile.absoluteFilePath());
-                emit sendLogs(head, false);
+                emit sendLogs(head, Qt::white, LogCode::FILE_IN);
 
-                emit sendLogs(QString("<font color='#ffff64'>Skipped, output file already exists</font><br>"), false);
+                emit sendLogs(QString("Skipped, output file already exists\n"), warnLogCol, LogCode::SKIPPED);
+            } else {
+                emit sendLogs(QString(), Qt::white, LogCode::FILE_IN);
+                emit sendLogs(QString(), warnLogCol, LogCode::SKIPPED);
             }
 
             emit sendProgress(100);
             return;
         } else {
             const QString head = QString("Processing: %1").arg(inFile.absoluteFilePath());
-            emit sendLogs(head, false);
+            emit sendLogs(head, Qt::white, LogCode::FILE_IN);
         }
 
         if (!runCjxl(cjxlBin, inFile, outFUrl)) {
@@ -317,18 +329,17 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         if (m_abort) {
             cjxlBin.kill();
             cjxlBin.waitForFinished(5000);
-            emit sendLogs(QString("<font color='#ff9696'>Aborted</font><br/><br/>"), false);
+            emit sendLogs(QString("Aborted\n"), errLogCol, LogCode::INFO);
             return false;
         }
         if (haveTimeout) {
             if (m_ticks > timeout) {
                 cjxlBin.kill();
                 cjxlBin.waitForFinished(5000);
-                emit sendLogs(
-                    QString(
-                        "<font color='#ffff64'>Skipped: Process exceeding set timeout of %1 second(s)</font><br/><br/>")
-                        .arg(QString::number(m_globalTimeout)),
-                    false);
+                emit sendLogs(QString("Skipped: Process exceeding set timeout of %1 second(s)\n")
+                                  .arg(QString::number(m_globalTimeout)),
+                              warnLogCol,
+                              LogCode::SKIPPED_TIMEOUT);
                 return true;
             }
         }
@@ -343,21 +354,9 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
     const QStringList rawStrList = rawString.split(newLines, Qt::SkipEmptyParts);
 
     if (!rawStrList.isEmpty()) {
-        const QString buffer = rawStrList.join("<br/>");
+        const QString buffer = rawStrList.join("\n");
 
-        const QString textColor = [&]() {
-            if (haveErrors)
-                return QString("ff9696");
-            return QString("32ff96");
-        }();
-
-        const QString formattedErr = QString("<font color='#%2'>%1</font><br/>").arg(buffer, textColor);
-        emit sendLogs(formattedErr, haveErrors);
-
-        const QString rawStd = cjxlBin.readAllStandardOutput();
-        if (!rawStd.isEmpty()) {
-            emit sendLogs(rawStd, false);
-        }
+        emit sendLogs(buffer, haveErrors ? errLogCol : okayLogCol, haveErrors ? LogCode::ENCODE_ERR : LogCode::OK);
 
         const QString lastLine = rawStrList.last();
         if (lastLine.contains("MP/s", Qt::CaseInsensitive)) {
@@ -377,12 +376,14 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         }
     }
 
+    const QString rawStd = cjxlBin.readAllStandardOutput();
+    if (!rawStd.isEmpty()) {
+        emit sendLogs(rawStd, Qt::white, LogCode::INFO);
+    }
+
     if (haveErrors && m_stopOnError && m_batch) {
-      emit sendLogs(
-          QString(
-              "<br/><font color='#ff9696'>Aborted: Batch set to stop on error</font><br/><br/>"),
-          false);
-      return false;
+        emit sendLogs(QString("Aborted: Batch set to stop on error\n"), errLogCol, LogCode::INFO);
+        return false;
     }
 
     QFileInfo inFile(fin);
@@ -392,9 +393,9 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         m_totalBytesOutput += outFile.size();
 
         const QString outFileStr = QString("Output:\n%1\n").arg(fout);
-        emit sendLogs(outFileStr, false);
+        emit sendLogs(outFileStr, Qt::white, LogCode::INFO);
     } else {
-        emit sendLogs(QString(), false);
+        emit sendLogs(QString(" "), Qt::white, LogCode::INFO);
     }
 
     return true;
@@ -404,8 +405,8 @@ void ConversionThread::calculateStats()
 {
     if (m_averageMps > 0.0) {
         const double avg = m_averageMps / static_cast<double>(m_mpsSamples);
-        const QString speed = QString("Average speed: %1 MP/s\n").arg(QString::number(avg));
-        emit sendLogs(speed, false);
+        const QString speed = QString("\tAverage speed: %1 MP/s\n").arg(QString::number(avg));
+        emit sendLogs(speed, Qt::white, LogCode::INFO);
     }
 
     if (m_totalBytesInput > 0 && m_totalBytesOutput > 0) {
@@ -422,9 +423,11 @@ void ConversionThread::calculateStats()
             suffix = QString("KiB");
         }
         const QString diff =
-            QString("Total in: %1 %5<br/>Total out: %2 %5<br/><font color='#ffbbff'>Out-in delta: %4%3\%</font><br/><br/>")
-                                 .arg(QString::number(inKB), QString::number(outKB), QString::number(delta), ((delta > 0) ? QString("+") : QString("")), suffix);
-        emit sendLogs(diff, false);
+            QString("\tTotal in: %1 %3\n\tTotal out: %2 %3").arg(QString::number(inKB), QString::number(outKB), suffix);
+        const QString diffDelta =
+            QString("\tOut-in delta: %2%1\%\n").arg(QString::number(delta), ((delta > 0) ? QString("+") : QString("")));
+        emit sendLogs(diff, Qt::white, LogCode::INFO);
+        emit sendLogs(diffDelta, statLogCol, LogCode::INFO);
     }
 }
 

@@ -7,11 +7,14 @@
 #ifndef CONVERSIONTHREAD_H
 #define CONVERSIONTHREAD_H
 
+#include "logcodes.h"
+
 #include <QProcess>
 #include <QDirIterator>
 #include <QThread>
 #include <QMutex>
 #include <QMap>
+#include <QColor>
 #include <QWaitCondition>
 #include <QTimerEvent>
 
@@ -26,7 +29,7 @@ public:
     void processFiles(const QString &cjxlbin, QDirIterator &dit, const QString &fout, const QMap<QString, QString> &args);
 
 signals:
-    void sendLogs(const QString &logs, const bool &isErr);
+    void sendLogs(const QString &logs, const QColor &col, const LogCode &isErr);
     void sendProgress(const float &prog);
 
 public slots:

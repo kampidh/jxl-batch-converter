@@ -341,36 +341,39 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
 
     const QString rawString = cjxlBin.readAllStandardError().trimmed();
     const QStringList rawStrList = rawString.split(newLines, Qt::SkipEmptyParts);
-    const QString buffer = rawStrList.join("<br/>");
 
-    const QString textColor = [&]() {
-        if (haveErrors)
-            return QString("ff9696");
-        return QString("32ff96");
-    }();
+    if (!rawStrList.isEmpty()) {
+        const QString buffer = rawStrList.join("<br/>");
 
-    const QString formattedErr = QString("<font color='#%2'>%1</font><br/>").arg(buffer, textColor);
-    emit sendLogs(formattedErr, haveErrors);
+        const QString textColor = [&]() {
+            if (haveErrors)
+                return QString("ff9696");
+            return QString("32ff96");
+        }();
 
-    const QString rawStd = cjxlBin.readAllStandardOutput();
-    if (!rawStd.isEmpty()) {
-        emit sendLogs(rawStd, false);
-    }
+        const QString formattedErr = QString("<font color='#%2'>%1</font><br/>").arg(buffer, textColor);
+        emit sendLogs(formattedErr, haveErrors);
 
-    const QString lastLine = rawStrList.last();
-    if (lastLine.contains("MP/s", Qt::CaseInsensitive)) {
-        const int fr = lastLine.indexOf(',');
-        const int bc = lastLine.indexOf('[');
+        const QString rawStd = cjxlBin.readAllStandardOutput();
+        if (!rawStd.isEmpty()) {
+            emit sendLogs(rawStd, false);
+        }
 
-        QString mpStr = lastLine.mid(fr + 1, bc - fr - 1);
+        const QString lastLine = rawStrList.last();
+        if (lastLine.contains("MP/s", Qt::CaseInsensitive)) {
+            const int fr = lastLine.indexOf(',');
+            const int bc = lastLine.indexOf('[');
 
-        mpStr.remove(regNum);
+            QString mpStr = lastLine.mid(fr + 1, bc - fr - 1);
 
-        const double mps = mpStr.trimmed().toDouble();
+            mpStr.remove(regNum);
 
-        if (mps > 0.0) {
-            m_mpsSamples++;
-            m_averageMps = m_averageMps + mps;
+            const double mps = mpStr.trimmed().toDouble();
+
+            if (mps > 0.0) {
+                m_mpsSamples++;
+                m_averageMps = m_averageMps + mps;
+            }
         }
     }
 

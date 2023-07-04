@@ -86,7 +86,7 @@ void ConversionThread::initArgs(const QMap<QString, QString> &args)
     startTimer(TICKS * TICKS_MULTIPLIER);
 }
 
-void ConversionThread::processFiles(const QString &cjxlbin,
+int ConversionThread::processFiles(const QString &cjxlbin,
                                     const QString &fin,
                                     const QString &fout,
                                     const QMap<QString, QString> &args)
@@ -102,16 +102,18 @@ void ConversionThread::processFiles(const QString &cjxlbin,
 
     initArgs(args);
 
-    start();
+    return 1;
 }
 
-void ConversionThread::processFiles(const QString &cjxlbin,
+int ConversionThread::processFiles(const QString &cjxlbin,
                                     QDirIterator &dit,
                                     const QString &fout,
                                     const QMap<QString, QString> &args)
 {
     m_cjxlbin = cjxlbin;
     m_finBatch.clear();
+
+    int numfiles = 0;
 
     while (dit.hasNext()) {
         /*
@@ -122,6 +124,7 @@ void ConversionThread::processFiles(const QString &cjxlbin,
         const QString ditto = dit.next();
         if (!ditto.contains(fout)) {
             m_finBatch.append(ditto);
+            numfiles++;
         }
     }
     m_fout = fout;
@@ -132,7 +135,7 @@ void ConversionThread::processFiles(const QString &cjxlbin,
 
     initArgs(args);
 
-    start();
+    return numfiles;
 }
 
 void ConversionThread::resetValues()
@@ -205,8 +208,7 @@ void ConversionThread::run()
                     emit sendLogs(QString("Skipping..."), errLogCol, LogCode::INFO);
 
                     sizeIter++;
-                    const float progress = (sizeIter * 1.0 / batchSize * 1.0) * 100.0;
-                    emit sendProgress(progress);
+                    emit sendProgress(sizeIter);
 
                     continue;
                 }
@@ -228,8 +230,7 @@ void ConversionThread::run()
                 }
 
                 sizeIter++;
-                const float progress = (sizeIter * 1.0 / batchSize * 1.0) * 100.0;
-                emit sendProgress(progress);
+                emit sendProgress(sizeIter);
 
                 continue;
             } else {
@@ -243,8 +244,7 @@ void ConversionThread::run()
             }
 
             sizeIter++;
-            const float progress = (sizeIter * 1.0 / batchSize * 1.0) * 100.0;
-            emit sendProgress(progress);
+            emit sendProgress(sizeIter);
         }
     } else {
         const QString inFUrl = m_fin;

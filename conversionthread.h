@@ -25,8 +25,8 @@ public:
     ConversionThread(QObject *parent = nullptr);
     ~ConversionThread();
 
-    void processFiles(const QString &cjxlbin, const QString &fin, const QString &fout, const QMap<QString, QString> &args);
-    void processFiles(const QString &cjxlbin, QDirIterator &dit, const QString &fout, const QMap<QString, QString> &args);
+    int processFiles(const QString &cjxlbin, const QString &fin, const QString &fout, const QMap<QString, QString> &args);
+    int processFiles(const QString &cjxlbin, QDirIterator &dit, const QString &fout, const QMap<QString, QString> &args);
 
 signals:
     void sendLogs(const QString &logs, const QColor &col, const LogCode &isErr);

@@ -297,6 +297,7 @@ void MainWindow::convertBtnPressed()
     logText->setTextColor(Qt::white);
 
     progressBar->setVisible(true);
+    progressBar->setRange(0, 100);
     progressBar->setValue(0);
 
     convertBtn->setEnabled(false);
@@ -485,6 +486,7 @@ void MainWindow::convertBtnPressed()
         const QString outFUrl = outputFileDir->text();
 
         d->m_thread.processFiles(binPath, inFUrl, outFUrl, encOptions);
+        d->m_thread.start();
     } else {
         const bool isRecursive = recursiveChk->isChecked();
 
@@ -510,7 +512,11 @@ void MainWindow::convertBtnPressed()
             return;
         }
 
-        d->m_thread.processFiles(binPath, dit, outputFileDir->text(), encOptions);
+        const int numFiles = d->m_thread.processFiles(binPath, dit, outputFileDir->text(), encOptions);
+        if (numFiles > 0) {
+            progressBar->setMaximum(numFiles);
+        }
+        d->m_thread.start();
     }
 }
 

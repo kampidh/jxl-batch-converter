@@ -410,7 +410,7 @@ void MainWindow::convertBtnPressed()
         //
         // cosmic ray is acting up again..
         //
-        logText->append("Warning: no flags are passed, possibly an internal error.");
+        dumpLogs(QString("Warning: no flags are passed, possibly an internal error."), warnLogCol, LogCode::INFO);
         break;
     }
 
@@ -422,7 +422,7 @@ void MainWindow::convertBtnPressed()
     QDir outUrl(outputFileDir->text());
     if (!outUrl.exists()) {
         if (!outUrl.mkpath(".")) {
-            logText->append("<font color='#ff9696'>Error: cannot create output directory!</font>");
+            dumpLogs(QString("Error: cannot create output directory!"), errLogCol, LogCode::INFO);
             resetUi();
             return;
         }
@@ -430,7 +430,7 @@ void MainWindow::convertBtnPressed()
 
     QFileInfo outTestFile(outputFileDir->text());
     if (!outTestFile.isWritable()) {
-        logText->append("<font color='#ff9696'>Output error: permission denied!</font>");
+        dumpLogs(QString("Output error: permission denied!"), errLogCol, LogCode::INFO);
         resetUi();
         progressBar->setVisible(false);
         return;
@@ -438,7 +438,7 @@ void MainWindow::convertBtnPressed()
 
     QFileInfo inFUrl(inputFileDir->text());
     if (!inFUrl.exists()) {
-        logText->append("<font color='#ff9696'>Error: input file/dir doesn't exist!</font>");
+        dumpLogs(QString("Error: input file/dir doesn't exist!"), errLogCol, LogCode::INFO);
         resetUi();
         progressBar->setVisible(false);
         return;
@@ -486,7 +486,7 @@ void MainWindow::convertBtnPressed()
     }();
 
     if (spFormats.isEmpty() || binPath.isEmpty()) {
-        logText->append("<font color='#ff9696'>Error: please select the correct tab</font>");
+        dumpLogs(QString("Error: please select the correct tab"), errLogCol, LogCode::INFO);
         resetUi();
         progressBar->setVisible(false);
         return;
@@ -526,7 +526,7 @@ void MainWindow::convertBtnPressed()
                          isRecursive ? QDirIterator::Subdirectories : QDirIterator::NoIteratorFlags);
 
         if (!dit.hasNext()) {
-            logText->append("<font color='#ff9696'>Error: directory contains no file(s) to convert!</font>");
+            dumpLogs(QString("Error: directory contains no file(s) to convert!"), errLogCol, LogCode::INFO);
             resetUi();
             progressBar->setVisible(false);
             return;
@@ -566,7 +566,7 @@ void MainWindow::printHelpBtnPressed()
         d->m_execBin->start(d->m_djpegliDir, helper);
         break;
     default:
-        logText->append("Error: please select the correct tab");
+        dumpLogs(QString("Error: please select the correct tab"), errLogCol, LogCode::INFO);
         return;
     }
 
@@ -576,8 +576,8 @@ void MainWindow::printHelpBtnPressed()
         return;
     }
 
-    logText->append(d->m_execBin->readAllStandardError());
-    logText->append(d->m_execBin->readAllStandardOutput());
+    dumpLogs(d->m_execBin->readAllStandardError(), okayLogCol, LogCode::INFO);
+    dumpLogs(d->m_execBin->readAllStandardOutput(), Qt::white, LogCode::INFO);
 }
 
 void MainWindow::tabIndexChanged(const int &index)

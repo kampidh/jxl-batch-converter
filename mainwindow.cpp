@@ -95,6 +95,8 @@ MainWindow::MainWindow(QWidget *parent)
     overwriteChkBox->setChecked(d->m_currentSetting->value("overwrite", false).toBool());
     silenceChkBox->setChecked(d->m_currentSetting->value("silence", false).toBool());
     outputFileDir->setText(d->m_currentSetting->value("outDir").toString());
+    overrideExtChk->setChecked(d->m_currentSetting->value("overrideExtChk", false).toBool());
+    overrideExtLine->setText(d->m_currentSetting->value("overrideExtText", QString("jpg;png;gif")).toString());
 
     distanceRadio->setChecked(d->m_currentSetting->value("distChecked", true).toBool());
     distanceSpinBox->setValue(d->m_currentSetting->value("distValue", 1.0).toDouble());
@@ -169,7 +171,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(convertBtn, SIGNAL(clicked(bool)), this, SLOT(convertBtnPressed()));
     connect(printHelpBtn, SIGNAL(clicked(bool)), this, SLOT(printHelpBtnPressed()));
 
-    connect(batchChk, SIGNAL(stateChanged(int)), this, SLOT(dirChkChange()));
+    // connect(batchChk, SIGNAL(stateChanged(int)), this, SLOT(dirChkChange()));
     connect(selectionTabWdg, SIGNAL(currentChanged(int)), this, SLOT(tabIndexChanged(int)));
 
     connect(abortBtn, SIGNAL(clicked(bool)), &d->m_thread, SLOT(stopProcess()));
@@ -177,6 +179,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&d->m_thread, SIGNAL(sendProgress(float)), this, SLOT(dumpProgress(float)));
     connect(&d->m_thread, SIGNAL(finished()), this, SLOT(resetUi()));
 
+    adjustSize();
     cjxlChecker();
 }
 
@@ -194,6 +197,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
     d->m_currentSetting->setValue("overwrite", overwriteChkBox->isChecked());
     d->m_currentSetting->setValue("silence", silenceChkBox->isChecked());
     d->m_currentSetting->setValue("outDir", outputFileDir->text());
+    d->m_currentSetting->setValue("overrideExtChk", overrideExtChk->isChecked());
+    d->m_currentSetting->setValue("overrideExtText", overrideExtLine->text());
 
     d->m_currentSetting->setValue("distChecked", distanceRadio->isChecked());
     d->m_currentSetting->setValue("distValue", distanceSpinBox->value());
@@ -458,6 +463,13 @@ void MainWindow::convertBtnPressed()
     }();
 
     const QStringList spFormats = [&]() {
+        if (overrideExtChk->isChecked()) {
+            QStringList overrideFormats = overrideExtLine->text().split(';');
+            for (auto &fmt : overrideFormats) {
+                fmt = QString("*.") + fmt;
+            }
+            return overrideFormats;
+        }
         switch (selectionTabWdg->currentIndex()) {
         case 0:
             return d->m_supportedCjxlFormats;
@@ -489,6 +501,14 @@ void MainWindow::convertBtnPressed()
         d->m_thread.start();
     } else {
         const bool isRecursive = recursiveChk->isChecked();
+
+        if (overrideExtChk->isChecked()) {
+            if (spFormats.isEmpty()) {
+                dumpLogs(QString("Error: Extension list is empty"), errLogCol, LogCode::INFO);
+            }
+            const QString logOverrideExt = QString("Overriding batch extensions: %1\n").arg(spFormats.join(' '));
+            dumpLogs(logOverrideExt, warnLogCol, LogCode::INFO);
+        }
 
         const QString inFUrl = inputFileDir->text();
         QFileInfo inFile(inFUrl);
@@ -661,11 +681,7 @@ void MainWindow::resetUi()
 
 void MainWindow::dirChkChange()
 {
-    if (batchChk->isChecked()) {
-        recursiveChk->setEnabled(true);
-    } else {
-        recursiveChk->setEnabled(false);
-    }
+    // reserved
 }
 
 void MainWindow::dumpLogs(const QString &logs, const QColor &col, const LogCode &isErr)

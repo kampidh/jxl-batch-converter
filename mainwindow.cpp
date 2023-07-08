@@ -464,12 +464,17 @@ void MainWindow::convertBtnPressed()
 
     const QStringList spFormats = [&]() {
         if (overrideExtChk->isChecked()) {
+            if (overrideExtLine->text().trimmed().isEmpty()) {
+                dumpLogs(QString("Error: extension list is empty"), errLogCol, LogCode::INFO);
+                return QStringList();
+            }
             QStringList overrideFormats = overrideExtLine->text().split(';');
             for (auto &fmt : overrideFormats) {
                 fmt = QString("*.") + fmt;
             }
             return overrideFormats;
         }
+
         switch (selectionTabWdg->currentIndex()) {
         case 0:
             return d->m_supportedCjxlFormats;
@@ -486,7 +491,7 @@ void MainWindow::convertBtnPressed()
     }();
 
     if (spFormats.isEmpty() || binPath.isEmpty()) {
-        dumpLogs(QString("Error: please select the correct tab"), errLogCol, LogCode::INFO);
+        dumpLogs(QString("Error: format and/or binary not found"), errLogCol, LogCode::INFO);
         resetUi();
         progressBar->setVisible(false);
         return;
@@ -503,9 +508,6 @@ void MainWindow::convertBtnPressed()
         const bool isRecursive = recursiveChk->isChecked();
 
         if (overrideExtChk->isChecked()) {
-            if (spFormats.isEmpty()) {
-                dumpLogs(QString("Error: Extension list is empty"), errLogCol, LogCode::INFO);
-            }
             const QString logOverrideExt = QString("Overriding batch extensions: %1\n").arg(spFormats.join(' '));
             dumpLogs(logOverrideExt, warnLogCol, LogCode::INFO);
         }

@@ -214,7 +214,7 @@ void ConversionThread::run()
                 }
             }
 
-            const QString outFName = inFile.baseName() + m_extension;
+            const QString outFName = inFile.completeBaseName() + m_extension;
             const QString outFPath = QDir::cleanPath(outFUrl.path() + QDir::separator() + outFName);
 
             const QFileInfo outFile(outFPath);
@@ -249,7 +249,7 @@ void ConversionThread::run()
     } else {
         const QString inFUrl = m_fin;
         const QFileInfo inFile(inFUrl);
-        const QString outFName = inFile.baseName() + m_extension;
+        const QString outFName = inFile.completeBaseName() + m_extension;
         const QString outFUrl = QDir::cleanPath(m_fout + QDir::separator() + outFName);
 
         const QFileInfo outFile(outFUrl);

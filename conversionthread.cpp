@@ -106,6 +106,33 @@ int ConversionThread::processFiles(const QString &cjxlbin,
 }
 
 int ConversionThread::processFiles(const QString &cjxlbin,
+                                   const QStringList &fin,
+                                   const QString &fout,
+                                   const QMap<QString, QString> &args)
+{
+    m_cjxlbin = cjxlbin;
+    m_finBatch.clear();
+
+    int numfiles = 0;
+
+    for (const QString &fi : fin) {
+        m_finBatch.append(fi);
+        numfiles++;
+    }
+
+    m_fout = fout;
+
+    resetValues();
+
+    m_batch = true;
+    m_useFileList = true;
+
+    initArgs(args);
+
+    return numfiles;
+}
+
+int ConversionThread::processFiles(const QString &cjxlbin,
                                     QDirIterator &dit,
                                     const QString &fout,
                                     const QMap<QString, QString> &args)
@@ -127,6 +154,7 @@ int ConversionThread::processFiles(const QString &cjxlbin,
             numfiles++;
         }
     }
+
     m_fout = fout;
 
     resetValues();
@@ -142,6 +170,7 @@ void ConversionThread::resetValues()
 {
     m_abort = false;
     m_batch = false;
+    m_useFileList = false;
     m_isJpegTran = false;
     m_isOverwrite = false;
     m_isSilent = false;
@@ -199,7 +228,12 @@ void ConversionThread::run()
             const QFileInfo inFile(fin);
 
             const QString extraDirName = QString(inFile.absolutePath()).remove(basePath);
-            const QDir outFUrl(QDir::cleanPath(m_fout + extraDirName));
+            const QDir outFUrl = [&]() {
+                if (m_useFileList) {
+                    return QDir::cleanPath(m_fout);
+                }
+                return QDir::cleanPath(m_fout + extraDirName);
+            }();
             if (!outFUrl.exists()) {
                 if(!outFUrl.mkpath(".")) {
                     const QString head = QString("Processing image(s) %2/%3:\n%1").arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
@@ -243,8 +277,8 @@ void ConversionThread::run()
                 return;
             }
 
-            sizeIter++;
             emit sendProgress(sizeIter);
+            sizeIter++;
         }
     } else {
         const QString inFUrl = m_fin;

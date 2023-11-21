@@ -27,6 +27,7 @@ public:
 
     int processFiles(const QString &cjxlbin, const QString &fin, const QString &fout, const QMap<QString, QString> &args);
     int processFiles(const QString &cjxlbin, QDirIterator &dit, const QString &fout, const QMap<QString, QString> &args);
+    int processFiles(const QString &cjxlbin, const QStringList &fin, const QString &fout, const QMap<QString, QString> &args);
 
 signals:
     void sendLogs(const QString &logs, const QColor &col, const LogCode &isErr);
@@ -52,6 +53,7 @@ private:
     bool m_disableOutput = false;
     bool m_stopOnError = false;
     bool m_haveCustomArgs = false;
+    bool m_useFileList = false;
 
     double m_averageMps = 0.0;
     int m_mpsSamples = 0;

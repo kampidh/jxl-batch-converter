@@ -174,7 +174,7 @@ color: rgb(255, 255, 255);</string>
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>1</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="inputFolderTab">
             <attribute name="title">
@@ -226,7 +226,7 @@ color: rgb(255, 255, 255);</string>
                     <bool>false</bool>
                    </property>
                    <property name="text">
-                    <string>Recursive</string>
+                    <string>Recursive (scan all subfolders)</string>
                    </property>
                    <property name="checkable">
                     <bool>true</bool>

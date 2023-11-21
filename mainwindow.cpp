@@ -89,10 +89,15 @@ MainWindow::MainWindow(QWidget *parent)
         new QSettings(QDir::cleanPath(QDir::homePath() + QDir::separator() + "jxl-batch-converter-config.ini"),
                       QSettings::IniFormat);
 
+    batchChk->setVisible(false);
+
     libjxlBinDir->setText(d->m_currentSetting->value("execBinDir").toString());
-    batchChk->setChecked(d->m_currentSetting->value("batchMode", false).toBool());
+    batchChk->setChecked(true);
     recursiveChk->setChecked(d->m_currentSetting->value("recursive", false).toBool());
     inputFileDir->setText(d->m_currentSetting->value("inDir").toString());
+
+    inputTab->setCurrentIndex(d->m_currentSetting->value("inputTabIndex", 0).toInt());
+    appendListsChk->setChecked(d->m_currentSetting->value("appendLists", false).toBool());
     overwriteChkBox->setChecked(d->m_currentSetting->value("overwrite", false).toBool());
     silenceChkBox->setChecked(d->m_currentSetting->value("silence", false).toBool());
     outputFileDir->setText(d->m_currentSetting->value("outDir").toString());
@@ -197,6 +202,9 @@ void MainWindow::closeEvent(QCloseEvent *event)
     d->m_currentSetting->setValue("execBinDir", libjxlBinDir->text());
     d->m_currentSetting->setValue("batchMode", batchChk->isChecked());
     d->m_currentSetting->setValue("recursive", recursiveChk->isChecked());
+
+    d->m_currentSetting->setValue("inputTabIndex", inputTab->currentIndex());
+    d->m_currentSetting->setValue("appendLists", appendListsChk->isChecked());
     d->m_currentSetting->setValue("inDir", inputFileDir->text());
     d->m_currentSetting->setValue("overwrite", overwriteChkBox->isChecked());
     d->m_currentSetting->setValue("silence", silenceChkBox->isChecked());
@@ -584,44 +592,65 @@ void MainWindow::convertBtnPressed()
         return;
     }
 
-    if (!batchChk->isChecked()) {
-        // inFUrl will get ignored later tho...
-        const QString inFUrl = inputFileDir->text();
-        const QString outFUrl = outputFileDir->text();
+    if (inputTab->currentIndex() == 0) {
+        if (!batchChk->isChecked()) {
+            // inFUrl will get ignored later tho...
+            const QString inFUrl = inputFileDir->text();
+            const QString outFUrl = outputFileDir->text();
 
-        d->m_thread.processFiles(binPath, inFUrl, outFUrl, encOptions);
-        d->m_thread.start();
-    } else {
-        const bool isRecursive = recursiveChk->isChecked();
-
-        if (overrideExtChk->isChecked()) {
-            const QString logOverrideExt = QString("Overriding batch extensions: %1\n").arg(spFormats.join(' '));
-            dumpLogs(logOverrideExt, warnLogCol, LogCode::INFO);
-        }
-
-        const QString inFUrl = inputFileDir->text();
-        QFileInfo inFile(inFUrl);
-
-        QDir inUrl;
-        if (inFile.isFile()) {
-            inUrl.setPath(inFile.absolutePath());
+            d->m_thread.processFiles(binPath, inFUrl, outFUrl, encOptions);
+            d->m_thread.start();
         } else {
-            inUrl.setPath(inFile.absoluteFilePath());
+            const bool isRecursive = recursiveChk->isChecked();
+
+            if (overrideExtChk->isChecked()) {
+                const QString logOverrideExt = QString("Overriding batch extensions: %1\n").arg(spFormats.join(' '));
+                dumpLogs(logOverrideExt, warnLogCol, LogCode::INFO);
+            }
+
+            const QString inFUrl = inputFileDir->text();
+            QFileInfo inFile(inFUrl);
+
+            QDir inUrl;
+            if (inFile.isFile()) {
+                inUrl.setPath(inFile.absolutePath());
+            } else {
+                inUrl.setPath(inFile.absoluteFilePath());
+            }
+
+            QDirIterator dit(inUrl.absolutePath(),
+                             spFormats,
+                             QDir::Files,
+                             isRecursive ? QDirIterator::Subdirectories : QDirIterator::NoIteratorFlags);
+
+            if (!dit.hasNext()) {
+                dumpLogs(QString("Error: directory contains no file(s) to convert!"), errLogCol, LogCode::INFO);
+                resetUi();
+                progressBar->setVisible(false);
+                return;
+            }
+
+            const int numFiles = d->m_thread.processFiles(binPath, dit, outputFileDir->text(), encOptions);
+            if (numFiles > 0) {
+                progressBar->setMaximum(numFiles);
+            }
+            d->m_thread.start();
         }
-
-        QDirIterator dit(inUrl.absolutePath(),
-                         spFormats,
-                         QDir::Files,
-                         isRecursive ? QDirIterator::Subdirectories : QDirIterator::NoIteratorFlags);
-
-        if (!dit.hasNext()) {
-            dumpLogs(QString("Error: directory contains no file(s) to convert!"), errLogCol, LogCode::INFO);
+    } else if (inputTab->currentIndex() == 1) {
+        if (fileListView->count() == 0) {
+            dumpLogs(QString("Error: No file(s) to convert!"), errLogCol, LogCode::INFO);
             resetUi();
             progressBar->setVisible(false);
             return;
         }
 
+        QStringList dit;
+        for (int i = 0; i < fileListView->count(); i++) {
+            dit << fileListView->item(i)->text();
+        }
+
         const int numFiles = d->m_thread.processFiles(binPath, dit, outputFileDir->text(), encOptions);
+
         if (numFiles > 0) {
             progressBar->setMaximum(numFiles);
         }

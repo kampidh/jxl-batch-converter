@@ -25,7 +25,6 @@ public:
     ConversionThread(QObject *parent = nullptr);
     ~ConversionThread();
 
-    int processFiles(const QString &cjxlbin, const QString &fin, const QString &fout, const QMap<QString, QString> &args);
     int processFiles(const QString &cjxlbin, QDirIterator &dit, const QString &fout, const QMap<QString, QString> &args);
     int processFiles(const QString &cjxlbin, const QStringList &fin, const QString &fout, const QMap<QString, QString> &args);
 
@@ -46,7 +45,6 @@ private:
     void resetValues();
     bool runCjxl(QProcess &jxlBin, const QFileInfo &fin, const QString &fout);
 
-    bool m_batch = false;
     bool m_isJpegTran = false;
     bool m_isOverwrite = false;
     bool m_isSilent = false;

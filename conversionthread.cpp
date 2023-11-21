@@ -87,25 +87,6 @@ void ConversionThread::initArgs(const QMap<QString, QString> &args)
 }
 
 int ConversionThread::processFiles(const QString &cjxlbin,
-                                    const QString &fin,
-                                    const QString &fout,
-                                    const QMap<QString, QString> &args)
-{
-    m_cjxlbin = cjxlbin;
-    m_finBatch.clear();
-    m_fin = fin;
-    m_fout = fout;
-
-    resetValues();
-
-    m_batch = false;
-
-    initArgs(args);
-
-    return 1;
-}
-
-int ConversionThread::processFiles(const QString &cjxlbin,
                                    const QStringList &fin,
                                    const QString &fout,
                                    const QMap<QString, QString> &args)
@@ -124,7 +105,6 @@ int ConversionThread::processFiles(const QString &cjxlbin,
 
     resetValues();
 
-    m_batch = true;
     m_useFileList = true;
 
     initArgs(args);
@@ -159,8 +139,6 @@ int ConversionThread::processFiles(const QString &cjxlbin,
 
     resetValues();
 
-    m_batch = true;
-
     initArgs(args);
 
     return numfiles;
@@ -169,7 +147,6 @@ int ConversionThread::processFiles(const QString &cjxlbin,
 void ConversionThread::resetValues()
 {
     m_abort = false;
-    m_batch = false;
     m_useFileList = false;
     m_isJpegTran = false;
     m_isOverwrite = false;
@@ -215,81 +192,51 @@ void ConversionThread::run()
 
     emit sendProgress(0);
 
-    if (m_batch) {
-        int sizeIter = 1;
-        const int batchSize = m_finBatch.size();
-        for (const QString &fin : qAsConst(m_finBatch)) {
-            if (m_abort) {
-                emit sendLogs(QString("Aborted\n"), errLogCol, LogCode::INFO);
-                calculateStats();
-                return;
+    int sizeIter = 1;
+    const int batchSize = m_finBatch.size();
+    for (const QString &fin : qAsConst(m_finBatch)) {
+        if (m_abort) {
+            emit sendLogs(QString("Aborted\n"), errLogCol, LogCode::INFO);
+            calculateStats();
+            return;
+        }
+
+        const QFileInfo inFile(fin);
+
+        const QString extraDirName = QString(inFile.absolutePath()).remove(basePath);
+        const QDir outFUrl = [&]() {
+            if (m_useFileList) {
+                return QDir::cleanPath(m_fout);
             }
-
-            const QFileInfo inFile(fin);
-
-            const QString extraDirName = QString(inFile.absolutePath()).remove(basePath);
-            const QDir outFUrl = [&]() {
-                if (m_useFileList) {
-                    return QDir::cleanPath(m_fout);
-                }
-                return QDir::cleanPath(m_fout + extraDirName);
-            }();
-            if (!outFUrl.exists()) {
-                if(!outFUrl.mkpath(".")) {
-                    const QString head = QString("Processing image(s) %2/%3:\n%1").arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
-                    emit sendLogs(head, Qt::white, LogCode::FILE_IN);
-                    emit sendLogs(QString("Failed to create subfolder at %1").arg(outFUrl.absolutePath()), errLogCol, LogCode::OUT_FOLDER_ERR);
-                    emit sendLogs(QString("Skipping..."), errLogCol, LogCode::INFO);
-
-                    sizeIter++;
-                    emit sendProgress(sizeIter);
-
-                    continue;
-                }
-            }
-
-            const QString outFName = inFile.completeBaseName() + m_extension;
-            const QString outFPath = QDir::cleanPath(outFUrl.path() + QDir::separator() + outFName);
-
-            const QFileInfo outFile(outFPath);
-            if (!m_isOverwrite && outFile.exists()) {
-                if (!m_isSilent) {
-                    const QString head = QString("Processing image(s) %2/%3:\n%1").arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
-                    emit sendLogs(head, Qt::white, LogCode::FILE_IN);
-
-                    emit sendLogs(QString("Skipped, output file already exists\n"), warnLogCol, LogCode::SKIPPED);
-                } else {
-                    emit sendLogs(QString(), Qt::white, LogCode::FILE_IN);
-                    emit sendLogs(QString(), warnLogCol, LogCode::SKIPPED);
-                }
+            return QDir::cleanPath(m_fout + extraDirName);
+        }();
+        if (!outFUrl.exists()) {
+            if (!outFUrl.mkpath(".")) {
+                const QString head =
+                    QString("Processing image(s) %2/%3:\n%1")
+                        .arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
+                emit sendLogs(head, Qt::white, LogCode::FILE_IN);
+                emit sendLogs(QString("Failed to create subfolder at %1").arg(outFUrl.absolutePath()),
+                              errLogCol,
+                              LogCode::OUT_FOLDER_ERR);
+                emit sendLogs(QString("Skipping..."), errLogCol, LogCode::INFO);
 
                 sizeIter++;
                 emit sendProgress(sizeIter);
 
                 continue;
-            } else {
-                const QString head = QString("Processing image(s) %2/%3:\n%1").arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
-                emit sendLogs(head, Qt::white, LogCode::FILE_IN);
             }
-
-            if (!runCjxl(cjxlBin, inFile, outFPath)) {
-                calculateStats();
-                return;
-            }
-
-            emit sendProgress(sizeIter);
-            sizeIter++;
         }
-    } else {
-        const QString inFUrl = m_fin;
-        const QFileInfo inFile(inFUrl);
-        const QString outFName = inFile.completeBaseName() + m_extension;
-        const QString outFUrl = QDir::cleanPath(m_fout + QDir::separator() + outFName);
 
-        const QFileInfo outFile(outFUrl);
+        const QString outFName = inFile.completeBaseName() + m_extension;
+        const QString outFPath = QDir::cleanPath(outFUrl.path() + QDir::separator() + outFName);
+
+        const QFileInfo outFile(outFPath);
         if (!m_isOverwrite && outFile.exists()) {
             if (!m_isSilent) {
-                const QString head = QString("Processing: %1").arg(inFile.absoluteFilePath());
+                const QString head =
+                    QString("Processing image(s) %2/%3:\n%1")
+                        .arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
                 emit sendLogs(head, Qt::white, LogCode::FILE_IN);
 
                 emit sendLogs(QString("Skipped, output file already exists\n"), warnLogCol, LogCode::SKIPPED);
@@ -298,19 +245,24 @@ void ConversionThread::run()
                 emit sendLogs(QString(), warnLogCol, LogCode::SKIPPED);
             }
 
-            emit sendProgress(100);
-            return;
+            sizeIter++;
+            emit sendProgress(sizeIter);
+
+            continue;
         } else {
-            const QString head = QString("Processing: %1").arg(inFile.absoluteFilePath());
+            const QString head =
+                QString("Processing image(s) %2/%3:\n%1")
+                    .arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
             emit sendLogs(head, Qt::white, LogCode::FILE_IN);
         }
 
-        if (!runCjxl(cjxlBin, inFile, outFUrl)) {
+        if (!runCjxl(cjxlBin, inFile, outFPath)) {
             calculateStats();
             return;
         }
 
-        emit sendProgress(100);
+        emit sendProgress(sizeIter);
+        sizeIter++;
     }
 
     calculateStats();
@@ -415,7 +367,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         emit sendLogs(rawStd, Qt::white, LogCode::INFO);
     }
 
-    if (haveErrors && m_stopOnError && m_batch) {
+    if (haveErrors && m_stopOnError) {
         emit sendLogs(QString("Aborted: Batch set to stop on error\n"), errLogCol, LogCode::INFO);
         return false;
     }

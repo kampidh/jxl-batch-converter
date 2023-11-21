@@ -214,16 +214,9 @@ color: rgb(255, 255, 255);</string>
                <item>
                 <layout class="QHBoxLayout" name="horizontalLayout_5">
                  <item>
-                  <widget class="QCheckBox" name="batchChk">
-                   <property name="text">
-                    <string>Use directory / batch mode</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
                   <widget class="QCheckBox" name="recursiveChk">
                    <property name="enabled">
-                    <bool>false</bool>
+                    <bool>true</bool>
                    </property>
                    <property name="text">
                     <string>Recursive (scan all subfolders)</string>
@@ -254,7 +247,7 @@ color: rgb(255, 255, 255);</string>
                <item>
                 <widget class="QGroupBox" name="overrideExtChk">
                  <property name="enabled">
-                  <bool>false</bool>
+                  <bool>true</bool>
                  </property>
                  <property name="toolTip">
                   <string>If enabled, only convert listed extensions.</string>
@@ -1338,38 +1331,6 @@ Press &quot;Print help&quot; to see available flags.</string>
     <hint type="destinationlabel">
      <x>763</x>
      <y>101</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>batchChk</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>recursiveChk</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>131</x>
-     <y>432</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>259</x>
-     <y>432</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>batchChk</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>overrideExtChk</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>131</x>
-     <y>432</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>229</x>
-     <y>484</y>
     </hint>
    </hints>
   </connection>

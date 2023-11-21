@@ -248,34 +248,42 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 {
-    if (inputTab->currentIndex() == 1 && event->mimeData()->hasUrls()) {
+    if (event->mimeData()->hasUrls()) {
         event->accept();
     }
 }
 
 void MainWindow::dragMoveEvent(QDragMoveEvent *event)
 {
-    if (inputTab->currentIndex() == 1 && event->mimeData()->hasUrls()) {
+    if (event->mimeData()->hasUrls()) {
         event->accept();
     }
 }
 
 void MainWindow::dropEvent(QDropEvent *event)
 {
-    if (inputTab->currentIndex() == 1 && event->mimeData()->hasUrls()) {
-        if (!appendListsChk->isChecked()) {
-            fileListView->clear();
-        }
-
-        foreach (const QUrl &url, event->mimeData()->urls()) {
-            const QFileInfo fileInfo = url.toLocalFile();
-
-            if (fileInfo.isFile() && fileListView->findItems(fileInfo.absoluteFilePath(), Qt::MatchExactly).isEmpty()) {
-                fileListView->addItem(fileInfo.absoluteFilePath());
+    if (event->mimeData()->hasUrls()) {
+        QFileInfo finfo = event->mimeData()->urls().at(0).toLocalFile();
+        if (finfo.isFile()) {
+            inputTab->setCurrentIndex(1);
+            if (!appendListsChk->isChecked()) {
+                fileListView->clear();
             }
-        }
 
-        fileCountLbl->setText(QString("File(s): %1").arg(fileListView->count()));
+            foreach (const QUrl &url, event->mimeData()->urls()) {
+                const QFileInfo fileInfo = url.toLocalFile();
+
+                if (fileInfo.isFile()
+                    && fileListView->findItems(fileInfo.absoluteFilePath(), Qt::MatchExactly).isEmpty()) {
+                    fileListView->addItem(fileInfo.absoluteFilePath());
+                }
+            }
+
+            fileCountLbl->setText(QString("File(s): %1").arg(fileListView->count()));
+        } else if (finfo.isDir()) {
+            inputTab->setCurrentIndex(0);
+            inputFileDir->setText(finfo.absoluteFilePath());
+        }
     }
 }
 

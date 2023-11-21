@@ -66,6 +66,7 @@ MainWindow::MainWindow(QWidget *parent)
                         << "*.jfif"
                         << "*.ppm"
                         << "*.pfm"
+                        << "*.pam"
                         << "*.pgx"
                         << "*.jxl";
 
@@ -79,6 +80,7 @@ MainWindow::MainWindow(QWidget *parent)
                                << "*.jfif"
                                << "*.ppm"
                                << "*.pfm"
+                               << "*.pam"
                                << "*.pgx"
                                << "*.jxl";
 
@@ -263,18 +265,37 @@ void MainWindow::dragMoveEvent(QDragMoveEvent *event)
 void MainWindow::dropEvent(QDropEvent *event)
 {
     if (event->mimeData()->hasUrls()) {
+
         QFileInfo finfo = event->mimeData()->urls().at(0).toLocalFile();
-        if (finfo.isFile()) {
+        if (finfo.isFile() || event->mimeData()->urls().count() > 1) {
             inputTab->setCurrentIndex(1);
             if (!appendListsChk->isChecked()) {
                 fileListView->clear();
             }
 
+            const QStringList spFormat = [&]() {
+                switch (selectionTabWdg->currentIndex()) {
+                case 0:
+                    return d->m_supportedCjxlFormats;
+                case 1:
+                    return d->m_supportedDjxlFormats;
+                case 2:
+                    return d->m_supportedCjpegliFormats;
+                case 3:
+                    return d->m_supportedDjpegliFormats;
+                default:
+                    break;
+                }
+                return QStringList();
+            }();
+            const QString supportedImages = spFormat.join(' ');
+
             foreach (const QUrl &url, event->mimeData()->urls()) {
                 const QFileInfo fileInfo = url.toLocalFile();
 
                 if (fileInfo.isFile()
-                    && fileListView->findItems(fileInfo.absoluteFilePath(), Qt::MatchExactly).isEmpty()) {
+                    && fileListView->findItems(fileInfo.absoluteFilePath(), Qt::MatchExactly).isEmpty()
+                    && supportedImages.contains(fileInfo.suffix())) {
                     fileListView->addItem(fileInfo.absoluteFilePath());
                 }
             }

@@ -24,6 +24,9 @@ public:
 
 private:
     void cjxlChecker();
+    void dragEnterEvent(QDragEnterEvent *event) override;
+    void dragMoveEvent(QDragMoveEvent *event) override;
+    void dropEvent(QDropEvent *event) override;
 
     class Private;
     Private *const d{nullptr};
@@ -38,6 +41,9 @@ private slots:
     void convertBtnPressed();
     void printHelpBtnPressed();
     void tabIndexChanged(const int &index);
+
+    void addFilesToItemList();
+    void removeSelectedFilesFromList();
 
     void resetUi();
     void dirChkChange();

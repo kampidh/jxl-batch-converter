@@ -15,6 +15,7 @@
 #include <QFileDialog>
 #include <QProcess>
 #include <QSettings>
+#include <QMimeData>
 
 class Q_DECL_HIDDEN MainWindow::Private
 {
@@ -179,6 +180,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&d->m_thread, SIGNAL(sendProgress(float)), this, SLOT(dumpProgress(float)));
     connect(&d->m_thread, SIGNAL(finished()), this, SLOT(resetUi()));
 
+    connect(addFilesBtn, SIGNAL(clicked(bool)), this, SLOT(addFilesToItemList()));
+    connect(removeFilesBtn, SIGNAL(clicked(bool)), this, SLOT(removeSelectedFilesFromList()));
+
     adjustSize();
     cjxlChecker();
 }
@@ -238,6 +242,89 @@ void MainWindow::closeEvent(QCloseEvent *event)
     d->m_currentSetting->setValue("maxLogLines", maxLinesSpinBox->value());
 
     event->accept();
+}
+
+void MainWindow::dragEnterEvent(QDragEnterEvent *event)
+{
+    if (inputTab->currentIndex() == 1 && event->mimeData()->hasUrls()) {
+        event->accept();
+    }
+}
+
+void MainWindow::dragMoveEvent(QDragMoveEvent *event)
+{
+    if (inputTab->currentIndex() == 1 && event->mimeData()->hasUrls()) {
+        event->accept();
+    }
+}
+
+void MainWindow::dropEvent(QDropEvent *event)
+{
+    if (inputTab->currentIndex() == 1 && event->mimeData()->hasUrls()) {
+        if (!appendListsChk->isChecked()) {
+            fileListView->clear();
+        }
+
+        foreach (const QUrl &url, event->mimeData()->urls()) {
+            const QFileInfo fileInfo = url.toLocalFile();
+
+            if (fileInfo.isFile() && fileListView->findItems(fileInfo.absoluteFilePath(), Qt::MatchExactly).isEmpty()) {
+                fileListView->addItem(fileInfo.absoluteFilePath());
+            }
+        }
+
+        fileCountLbl->setText(QString("File(s): %1").arg(fileListView->count()));
+    }
+}
+
+void MainWindow::addFilesToItemList()
+{
+    QStringList inFile;
+    const QStringList spFormat = [&]() {
+        switch (selectionTabWdg->currentIndex()) {
+        case 0:
+            return d->m_supportedCjxlFormats;
+        case 1:
+            return d->m_supportedDjxlFormats;
+        case 2:
+            return d->m_supportedCjpegliFormats;
+        case 3:
+            return d->m_supportedDjpegliFormats;
+        default:
+            break;
+        }
+        return QStringList();
+    }();
+    const QString supportedImages = spFormat.join(' ');
+    inFile = QFileDialog::getOpenFileNames(this,
+                                           "Select input file",
+                                           inputFileDir->text(),
+                                           QString("Supported Images (%1)").arg(supportedImages));
+
+    if (!inFile.isEmpty()) {
+        if (!appendListsChk->isChecked()) {
+            fileListView->clear();
+        }
+
+        foreach (const QString &url, inFile) {
+            if (fileListView->findItems(url, Qt::MatchExactly).isEmpty()) {
+                fileListView->addItem(url);
+            }
+        }
+    }
+
+    fileCountLbl->setText(QString("File(s): %1").arg(fileListView->count()));
+}
+
+void MainWindow::removeSelectedFilesFromList()
+{
+    if (!fileListView->selectedItems().isEmpty()) {
+        foreach (const auto &item, fileListView->selectedItems()) {
+            delete fileListView->takeItem(fileListView->row(item));
+        }
+
+        fileCountLbl->setText(QString("File(s): %1").arg(fileListView->count()));
+    }
 }
 
 void MainWindow::libjxlBtnPressed()

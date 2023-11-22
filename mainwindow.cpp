@@ -330,7 +330,7 @@ void MainWindow::addFilesToItemList()
     inFile = QFileDialog::getOpenFileNames(this,
                                            "Select input file",
                                            inputFileDir->text(),
-                                           QString("Supported Images (%1)").arg(supportedImages));
+                                           QString("Supported images (%1);;All files(*.*)").arg(supportedImages));
 
     if (!inFile.isEmpty()) {
         if (!appendListsChk->isChecked()) {

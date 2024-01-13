@@ -64,6 +64,10 @@ void ConversionThread::initArgs(const QMap<QString, QString> &args)
             m_stopOnError = true;
         }
 
+        if (mit.key() == "globalCopyOnError" && mit.value() == "1") {
+            m_copyOnError = true;
+        }
+
         if (mit.key() == "customFlags") {
             if (mit.value().contains("disable_output")) {
                 m_disableOutput = true;
@@ -105,7 +109,34 @@ int ConversionThread::processFiles(const QString &cjxlbin,
 
     resetValues();
 
-    m_useFileList = true;
+    // m_useFileList = true;
+
+    initArgs(args);
+
+    return numfiles;
+}
+
+int ConversionThread::processFilesWithList(const QString &cjxlbin,
+                                           const QStringList &fin,
+                                           const QString &fout,
+                                           const QMap<QString, QString> &args,
+                                           const bool useList)
+{
+    m_cjxlbin = cjxlbin;
+    m_finBatch.clear();
+
+    int numfiles = 0;
+
+    for (const QString &fi : fin) {
+        m_finBatch.append(fi);
+        numfiles++;
+    }
+
+    m_fout = fout;
+
+    resetValues();
+
+    m_useFileList = useList;
 
     initArgs(args);
 
@@ -153,6 +184,7 @@ void ConversionThread::resetValues()
     m_isSilent = false;
     m_disableOutput = false;
     m_stopOnError = false;
+    m_copyOnError = false;
     m_haveCustomArgs = false;
 
     m_customArgs.clear();
@@ -190,7 +222,7 @@ void ConversionThread::run()
 
     const QString basePath = inUrl.absolutePath();
 
-    emit sendProgress(0);
+    // emit sendProgress(0);
 
     int sizeIter = 1;
     const int batchSize = m_finBatch.size();
@@ -211,7 +243,7 @@ void ConversionThread::run()
             return QDir::cleanPath(m_fout + extraDirName);
         }();
         if (!outFUrl.exists()) {
-            if (!outFUrl.mkpath(".")) {
+            if (!outFUrl.mkpath(".") && !outFUrl.exists()) {
                 const QString head =
                     QString("Processing image(s) %2/%3:\n%1")
                         .arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
@@ -365,6 +397,23 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
     const QString rawStd = cjxlBin.readAllStandardOutput();
     if (!rawStd.isEmpty()) {
         emit sendLogs(rawStd, Qt::white, LogCode::INFO);
+    }
+
+    if (haveErrors && m_copyOnError) {
+        emit sendLogs(QString("Copying source file to destination folder instead..."), warnLogCol, LogCode::INFO);
+        const QFileInfo outp(fout);
+        const QString outpfile = QDir::cleanPath(outp.absolutePath() + QDir::separator() + fin.fileName());
+        if (!QFile::copy(fin.absoluteFilePath(), outpfile)) {
+            if (QFile::exists(outpfile)) {
+                emit sendLogs(QString("Failed to copy source file: file already exists."), errLogCol, LogCode::INFO);
+            } else {
+                emit sendLogs(QString("Unable to copy source file to destination folder."), errLogCol, LogCode::INFO);
+            }
+        } else {
+            emit sendLogs(QString("File copied."), warnLogCol, LogCode::INFO);
+        }
+        const QString outFileStr = QString("Output:\n%1\n").arg(outpfile);
+        emit sendLogs(outFileStr, Qt::white, LogCode::INFO);
     }
 
     if (haveErrors && m_stopOnError) {

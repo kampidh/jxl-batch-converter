@@ -26,6 +26,7 @@ public:
     ~ConversionThread();
 
     int processFiles(const QString &cjxlbin, QDirIterator &dit, const QString &fout, const QMap<QString, QString> &args);
+    int processFilesWithList(const QString &cjxlbin, const QStringList &fin, const QString &fout, const QMap<QString, QString> &args, const bool useList);
     int processFiles(const QString &cjxlbin, const QStringList &fin, const QString &fout, const QMap<QString, QString> &args);
 
 signals:
@@ -50,6 +51,7 @@ private:
     bool m_isSilent = false;
     bool m_disableOutput = false;
     bool m_stopOnError = false;
+    bool m_copyOnError = false;
     bool m_haveCustomArgs = false;
     bool m_useFileList = false;
 

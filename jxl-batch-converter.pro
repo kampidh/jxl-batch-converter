@@ -21,6 +21,9 @@ HEADERS += \
 FORMS += \
     mainwindow.ui
 
+VERSION = 0.4.0
+DEFINES += APP_VERSION=\\\"$$VERSION\\\"
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin

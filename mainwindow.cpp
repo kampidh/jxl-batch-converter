@@ -41,7 +41,7 @@ public:
     int m_patchVer = 0;
     int m_fullVer = 0;
 
-    ConversionThread m_thread;
+    QList<ConversionThread *> m_threadList;
     QElapsedTimer m_eTimer;
     QSettings *m_currentSetting;
 
@@ -144,6 +144,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     glbTimeoutSpinBox->setValue(d->m_currentSetting->value("globalTimeout").toUInt());
     stopOnErrorchkBox->setChecked(d->m_currentSetting->value("stopOnError", false).toBool());
+    copyOnErrorchk->setChecked(d->m_currentSetting->value("copyOnError", false).toBool());
     maxLinesSpinBox->setValue(d->m_currentSetting->value("maxLogLines", 1000).toInt());
 
     logText->document()->setMaximumBlockCount(maxLinesSpinBox->value());
@@ -177,15 +178,19 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(selectionTabWdg, SIGNAL(currentChanged(int)), this, SLOT(tabIndexChanged(int)));
 
-    connect(abortBtn, SIGNAL(clicked(bool)), &d->m_thread, SLOT(stopProcess()));
-    connect(&d->m_thread, SIGNAL(sendLogs(QString, QColor, LogCode)), this, SLOT(dumpLogs(QString, QColor, LogCode)));
-    connect(&d->m_thread, SIGNAL(sendProgress(float)), this, SLOT(dumpProgress(float)));
-    connect(&d->m_thread, SIGNAL(finished()), this, SLOT(resetUi()));
-
     connect(addFilesBtn, SIGNAL(clicked(bool)), this, SLOT(addFilesToItemList()));
     connect(removeFilesBtn, SIGNAL(clicked(bool)), this, SLOT(removeSelectedFilesFromList()));
 
+    // be nice with the threads...
+    threadSpinBox->setMaximum(std::max(QThread::idealThreadCount() - 2, (int)1));
+    threadSpinBox->setMinimum(1);
+    threadSpinBox->setValue(1);
+
+    const QString titleWithVer = QString("%1 - v%2").arg(windowTitle(), QString(APP_VERSION));
+    setWindowTitle(titleWithVer);
+
     adjustSize();
+    // resize(minimumSizeHint());
     cjxlChecker();
 }
 
@@ -243,6 +248,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
     d->m_currentSetting->setValue("globalTimeout", glbTimeoutSpinBox->value());
     d->m_currentSetting->setValue("stopOnError", stopOnErrorchkBox->isChecked());
+    d->m_currentSetting->setValue("copyOnError", copyOnErrorchk->isChecked());
     d->m_currentSetting->setValue("maxLogLines", maxLinesSpinBox->value());
 
     event->accept();
@@ -513,6 +519,7 @@ void MainWindow::convertBtnPressed()
     encOptions.insert("silent", (silenceChkBox->isChecked() ? "1" : "0"));
     encOptions.insert("globalTimeout", QString::number(glbTimeoutSpinBox->value()));
     encOptions.insert("globalStopOnError", (stopOnErrorchkBox->isChecked() ? "1" : "0"));
+    encOptions.insert("globalCopyOnError", (copyOnErrorchk->isChecked() ? "1" : "0"));
 
     QDir outUrl(outputFileDir->text());
     if (!outUrl.exists()) {
@@ -622,11 +629,43 @@ void MainWindow::convertBtnPressed()
             return;
         }
 
-        const int numFiles = d->m_thread.processFiles(binPath, dit, outputFileDir->text(), encOptions);
-        if (numFiles > 0) {
-            progressBar->setMaximum(numFiles);
+        QStringList dits;
+        while (dit.hasNext()) {
+            const QString ditto = dit.next();
+            if (!ditto.contains(outputFileDir->text())) {
+                dits.append(ditto);
+            }
         }
-        d->m_thread.start();
+
+        const int numthr = threadSpinBox->value();
+        const int bucketSize = dits.size() / numthr;
+        QList<QStringList> ditlist;
+        for (int i = 0; i < numthr; i++) {
+            if (i == numthr - 1) {
+                ditlist.append(dits.mid(i*bucketSize, -1));
+            } else {
+                ditlist.append(dits.mid(i*bucketSize, bucketSize));
+            }
+        }
+
+        foreach (const auto &c, ditlist) {
+            ConversionThread *ct = new ConversionThread();
+            ct->processFilesWithList(binPath, c, outputFileDir->text(), encOptions, false);
+            d->m_threadList.append(ct);
+        }
+
+        progressBar->setMaximum(dits.size());
+
+        foreach (const auto &ct, d->m_threadList) {
+            connect(abortBtn, SIGNAL(clicked(bool)), ct, SLOT(stopProcess()));
+            connect(ct, SIGNAL(sendLogs(QString, QColor, LogCode)), this, SLOT(dumpLogs(QString, QColor, LogCode)));
+            connect(ct, SIGNAL(finished()), this, SLOT(resetUi()));
+            connect(ct, SIGNAL(sendProgress(float)), this, SLOT(dumpProgress(float)));
+            ct->start();
+        }
+
+        return;
+
     } else if (inputTab->currentIndex() == 1) {
         if (fileListView->count() == 0) {
             dumpLogs(QString("Error: No file(s) to convert!"), errLogCol, LogCode::INFO);
@@ -640,12 +679,34 @@ void MainWindow::convertBtnPressed()
             dit << fileListView->item(i)->text();
         }
 
-        const int numFiles = d->m_thread.processFiles(binPath, dit, outputFileDir->text(), encOptions);
-
-        if (numFiles > 0) {
-            progressBar->setMaximum(numFiles);
+        const int numthr = threadSpinBox->value();
+        const int bucketSize = dit.size() / numthr;
+        QList<QStringList> ditlist;
+        for (int i = 0; i < numthr; i++) {
+            if (i == numthr - 1) {
+                ditlist.append(dit.mid(i*bucketSize, -1));
+            } else {
+                ditlist.append(dit.mid(i*bucketSize, bucketSize));
+            }
         }
-        d->m_thread.start();
+
+        foreach (const auto &c, ditlist) {
+            ConversionThread *ct = new ConversionThread();
+            ct->processFilesWithList(binPath, c, outputFileDir->text(), encOptions, true);
+            d->m_threadList.append(ct);
+        }
+
+        progressBar->setMaximum(dit.size());
+
+        foreach (const auto &ct, d->m_threadList) {
+            connect(abortBtn, SIGNAL(clicked(bool)), ct, SLOT(stopProcess()));
+            connect(ct, SIGNAL(sendLogs(QString, QColor, LogCode)), this, SLOT(dumpLogs(QString, QColor, LogCode)));
+            connect(ct, SIGNAL(finished()), this, SLOT(resetUi()));
+            connect(ct, SIGNAL(sendProgress(float)), this, SLOT(dumpProgress(float)));
+            ct->start();
+        }
+
+        return;
     }
 }
 
@@ -728,6 +789,23 @@ void MainWindow::tabIndexChanged(const int &index)
 
 void MainWindow::resetUi()
 {
+    if (!d->m_threadList.isEmpty()) {
+        foreach (const auto &ct, d->m_threadList) {
+            if (ct && ct->isRunning()) {
+                return;
+            }
+        }
+        foreach (const auto &ct, d->m_threadList) {
+            if (ct) {
+                disconnect(abortBtn, SIGNAL(clicked(bool)), ct, SLOT(stopProcess()));
+                disconnect(ct, SIGNAL(sendLogs(QString, QColor, LogCode)), this, SLOT(dumpLogs(QString, QColor, LogCode)));
+                disconnect(ct, SIGNAL(finished()), this, SLOT(resetUi()));
+                disconnect(ct, SIGNAL(sendProgress(float)), this, SLOT(dumpProgress(float)));
+                delete ct;
+            }
+        }
+        d->m_threadList.clear();
+    }
     const float decodeTime = d->m_eTimer.elapsed() / 1000.0;
 
     if (d->m_numFiles > 0) {
@@ -795,6 +873,15 @@ void MainWindow::dirChkChange()
 
 void MainWindow::dumpLogs(const QString &logs, const QColor &col, const LogCode &isErr)
 {
+    if (logs.contains("Aborted: Batch set to stop on error")) {
+        if (!d->m_threadList.isEmpty()) {
+            foreach (const auto &ct, d->m_threadList) {
+                if (ct->isRunning()) {
+                    ct->stopProcess();
+                }
+            }
+        }
+    }
     switch (isErr) {
     case LogCode::FILE_IN:
         d->m_numFiles++;
@@ -823,8 +910,11 @@ void MainWindow::dumpLogs(const QString &logs, const QColor &col, const LogCode 
 
 void MainWindow::dumpProgress(const float &prog)
 {
+    Q_UNUSED(prog);
+    const int val = progressBar->value() + 1;
     progressBar->setVisible(true);
-    progressBar->setValue(prog);
+    // progressBar->setValue(prog);
+    progressBar->setValue(val);
 }
 
 void MainWindow::cjxlChecker()

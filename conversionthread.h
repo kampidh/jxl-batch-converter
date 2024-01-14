@@ -54,6 +54,7 @@ private:
     bool m_copyOnError = false;
     bool m_haveCustomArgs = false;
     bool m_useFileList = false;
+    bool m_isMultithread = false;
 
     double m_averageMps = 0.0;
     int m_mpsSamples = 0;

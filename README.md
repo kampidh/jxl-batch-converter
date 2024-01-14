@@ -3,7 +3,7 @@ A simple GUI for libjxl binaries, written in C++ with Qt.
 
 *Or I could say a glorified batch command wrapped in GUI... :3*
 
-![Screnshot](simplelibjxlgui-v04.png)
+![Screnshot](simplelibjxlgui-v041.png)
 
 (new in v0.3+) Drag and drop files / folder directly!
 ![Screnshot-DragNDrop](simplelibjxlgui-v03-filelists.png)
@@ -18,13 +18,11 @@ Features:
 - Folder with / without recursive mode
 - Set per-image processing timeout
 - Options saved on exit (config file will be placed in user home)
-- (Experimental) Multi-threading support (v0.4.0+)
+- Multi-threading support (v0.4.0+)
 - Copy file on encoding error (v0.4.0+)
 
 **Notes on multi-threading**:
-- I haven't fully tested the stability of multithread function. So far it works as intended. On my testing, at worst it only mangles the log output as different threads are writing on a single log *(race conditions woohoo!)*. I have no plans yet to group log outputs on different thread because of how the log works internally. So if you have difficulties reading the logs with multithreading, consider running with single thread instead. At the end, however, the reports are still giving the correct number of errors and successful processing.
-- While doing recursive folder processing, it can sometimes trigger a failure when the tool is creating a new folder. If you managed to get this error, just rerun the tool again (make sure to disable **Overwrite**!).
-- Because of the experimental flag, settings on multi threading will not be saved on exit and will revert back to 1 (single thread) on reopening the tool. 
+- While doing recursive folder processing, it can sometimes trigger a failure when the tool is creating a new folder. If you managed to get this error, just rerun the tool again (make sure to disable **Overwrite**!). Should be fixed but I'll put this warning just in case it still triggers.
 
 Get libjxl binaries at the [official project page](https://github.com/libjxl/libjxl)!
 

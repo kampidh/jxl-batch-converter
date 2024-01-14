@@ -1161,17 +1161,17 @@ Press &quot;Print help&quot; to see available flags.</string>
            <item row="0" column="0">
             <widget class="QLabel" name="label_22">
              <property name="toolTip">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Experimental:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Set how many conversion threads to be called. Has a maximum of (max thread count - 2) to prevent saturating the processor heavily.&lt;/p&gt;&lt;p&gt;Also, using more than 1 thread will break logs display. :]&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set how many conversion threads to be called. Has a maximum of (max thread count - 2) to prevent saturating the processor heavily.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="text">
-              <string>(Experimental) Max threads:</string>
+              <string>Max threads:</string>
              </property>
             </widget>
            </item>
            <item row="0" column="1">
             <widget class="QSpinBox" name="threadSpinBox">
              <property name="toolTip">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Experimental:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Set how many conversion threads to be called. Has a maximum of (max thread count - 2) to prevent saturating the processor heavily.&lt;/p&gt;&lt;p&gt;Also, using more than 1 thread will break logs display. :]&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set how many conversion threads to be called. Has a maximum of (max thread count - 2) to prevent saturating the processor heavily.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="minimum">
               <number>1</number>

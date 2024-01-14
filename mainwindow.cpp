@@ -36,6 +36,8 @@ public:
     QStringList m_supportedCjpegliFormats;
     QStringList m_supportedDjpegliFormats;
 
+    QStringList m_accumulatedLogs;
+
     int m_majorVer = 0;
     int m_minorVer = 0;
     int m_patchVer = 0;
@@ -142,6 +144,11 @@ MainWindow::MainWindow(QWidget *parent)
     }
     custJpegliOutFlagTxt->appendPlainText(d->m_currentSetting->value("customJpegliOutFlagsStr").toString());
 
+    // be nice with the threads...
+    threadSpinBox->setMaximum(std::max(QThread::idealThreadCount() - 2, (int)1));
+    threadSpinBox->setMinimum(1);
+    threadSpinBox->setValue(std::max(std::min((quint32)d->m_currentSetting->value("maxThreads").toUInt(), (quint32)(QThread::idealThreadCount() - 2)), (quint32)1));
+
     glbTimeoutSpinBox->setValue(d->m_currentSetting->value("globalTimeout").toUInt());
     stopOnErrorchkBox->setChecked(d->m_currentSetting->value("stopOnError", false).toBool());
     copyOnErrorchk->setChecked(d->m_currentSetting->value("copyOnError", false).toBool());
@@ -180,11 +187,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(addFilesBtn, SIGNAL(clicked(bool)), this, SLOT(addFilesToItemList()));
     connect(removeFilesBtn, SIGNAL(clicked(bool)), this, SLOT(removeSelectedFilesFromList()));
-
-    // be nice with the threads...
-    threadSpinBox->setMaximum(std::max(QThread::idealThreadCount() - 2, (int)1));
-    threadSpinBox->setMinimum(1);
-    threadSpinBox->setValue(1);
 
     const QString titleWithVer = QString("%1 - v%2").arg(windowTitle(), QString(APP_VERSION));
     setWindowTitle(titleWithVer);
@@ -228,6 +230,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     d->m_currentSetting->setValue("gaborish", gaborishSpinBox->value());
     d->m_currentSetting->setValue("fastDecode", fasterDecodeSpinBox->value());
 
+    d->m_currentSetting->setValue("maxThreads", threadSpinBox->value());
     d->m_currentSetting->setValue("customFlagsChk", custFlagsChkBox->isChecked());
     d->m_currentSetting->setValue("customFlagsStr", custFlagsText->toPlainText());
     d->m_currentSetting->setValue("overrideFlags", overrideOptChkBox->isChecked());
@@ -520,6 +523,7 @@ void MainWindow::convertBtnPressed()
     encOptions.insert("globalTimeout", QString::number(glbTimeoutSpinBox->value()));
     encOptions.insert("globalStopOnError", (stopOnErrorchkBox->isChecked() ? "1" : "0"));
     encOptions.insert("globalCopyOnError", (copyOnErrorchk->isChecked() ? "1" : "0"));
+    encOptions.insert("useMultithread", ((threadSpinBox->value() > 1) ? "1" : "0"));
 
     QDir outUrl(outputFileDir->text());
     if (!outUrl.exists()) {
@@ -790,11 +794,13 @@ void MainWindow::tabIndexChanged(const int &index)
 void MainWindow::resetUi()
 {
     if (!d->m_threadList.isEmpty()) {
+        bool stillRun = false;
         foreach (const auto &ct, d->m_threadList) {
             if (ct && ct->isRunning()) {
-                return;
+                stillRun = true;
             }
         }
+        if (stillRun) return;
         foreach (const auto &ct, d->m_threadList) {
             if (ct) {
                 disconnect(abortBtn, SIGNAL(clicked(bool)), ct, SLOT(stopProcess()));
@@ -806,6 +812,21 @@ void MainWindow::resetUi()
         }
         d->m_threadList.clear();
     }
+
+    if (!d->m_accumulatedLogs.isEmpty()) {
+        logText->setTextColor(statLogCol);
+        int numthread = 1;
+        foreach (const auto &acc, d->m_accumulatedLogs) {
+            logText->setTextColor(Qt::white);
+            logText->append(QString("Thread %1:").arg(QString::number(numthread)));
+            logText->setTextColor(statLogCol);
+            logText->append(acc);
+            numthread++;
+        }
+        logText->setTextColor(Qt::white);
+        d->m_accumulatedLogs.clear();
+    }
+
     const float decodeTime = d->m_eTimer.elapsed() / 1000.0;
 
     if (d->m_numFiles > 0) {
@@ -881,6 +902,10 @@ void MainWindow::dumpLogs(const QString &logs, const QColor &col, const LogCode 
                 }
             }
         }
+    }
+    if (threadSpinBox->value() > 1 && logs.contains('\t')) {
+        d->m_accumulatedLogs.append(logs);
+        return;
     }
     switch (isErr) {
     case LogCode::FILE_IN:

@@ -68,6 +68,10 @@ void ConversionThread::initArgs(const QMap<QString, QString> &args)
             m_copyOnError = true;
         }
 
+        if (mit.key() == "useMultithread" && mit.value() == "1") {
+            m_isMultithread = true;
+        }
+
         if (mit.key() == "customFlags") {
             if (mit.value().contains("disable_output")) {
                 m_disableOutput = true;
@@ -186,6 +190,7 @@ void ConversionThread::resetValues()
     m_stopOnError = false;
     m_copyOnError = false;
     m_haveCustomArgs = false;
+    m_isMultithread = false;
 
     m_customArgs.clear();
 
@@ -244,10 +249,17 @@ void ConversionThread::run()
         }();
         if (!outFUrl.exists()) {
             if (!outFUrl.mkpath(".") && !outFUrl.exists()) {
-                const QString head =
-                    QString("Processing image(s) %2/%3:\n%1")
-                        .arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
-                emit sendLogs(head, Qt::white, LogCode::FILE_IN);
+                if (!m_isMultithread) {
+                    const QString head =
+                        QString("Processing image(s) %2/%3:\n%1")
+                            .arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
+                    emit sendLogs(head, Qt::white, LogCode::FILE_IN);
+                } else {
+                    const QString head =
+                        QString("Processing image(s):\n%1")
+                            .arg(inFile.absoluteFilePath());
+                    emit sendLogs(head, Qt::white, LogCode::FILE_IN);
+                }
                 emit sendLogs(QString("Failed to create subfolder at %1").arg(outFUrl.absolutePath()),
                               errLogCol,
                               LogCode::OUT_FOLDER_ERR);
@@ -266,10 +278,17 @@ void ConversionThread::run()
         const QFileInfo outFile(outFPath);
         if (!m_isOverwrite && outFile.exists()) {
             if (!m_isSilent) {
-                const QString head =
-                    QString("Processing image(s) %2/%3:\n%1")
-                        .arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
-                emit sendLogs(head, Qt::white, LogCode::FILE_IN);
+                if (!m_isMultithread) {
+                    const QString head =
+                        QString("Processing image(s) %2/%3:\n%1")
+                            .arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
+                    emit sendLogs(head, Qt::white, LogCode::FILE_IN);
+                } else {
+                    const QString head =
+                        QString("Processing image(s):\n%1")
+                            .arg(inFile.absoluteFilePath());
+                    emit sendLogs(head, Qt::white, LogCode::FILE_IN);
+                }
 
                 emit sendLogs(QString("Skipped, output file already exists\n"), warnLogCol, LogCode::SKIPPED);
             } else {
@@ -282,10 +301,12 @@ void ConversionThread::run()
 
             continue;
         } else {
-            const QString head =
-                QString("Processing image(s) %2/%3:\n%1")
-                    .arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
-            emit sendLogs(head, Qt::white, LogCode::FILE_IN);
+            if (!m_isMultithread) {
+                const QString head =
+                    QString("Processing image(s) %2/%3:\n%1")
+                        .arg(inFile.absoluteFilePath(), QString::number(sizeIter), QString::number(batchSize));
+                emit sendLogs(head, Qt::white, LogCode::FILE_IN);
+            }
         }
 
         if (!runCjxl(cjxlBin, inFile, outFPath)) {
@@ -371,6 +392,11 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
     const QString rawString = cjxlBin.readAllStandardError().trimmed();
     const QStringList rawStrList = rawString.split(newLines, Qt::SkipEmptyParts);
 
+    if (m_isMultithread) {
+        const QString head = QString("Processing image:\n%1").arg(fin.absoluteFilePath());
+        emit sendLogs(head, Qt::white, LogCode::FILE_IN);
+    }
+
     if (!rawStrList.isEmpty()) {
         const QString buffer = rawStrList.join("\n");
 
@@ -438,10 +464,13 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
 
 void ConversionThread::calculateStats()
 {
+    QStringList stats;
     if (m_averageMps > 0.0) {
         const double avg = m_averageMps / static_cast<double>(m_mpsSamples);
         const QString speed = QString("\tAverage speed: %1 MP/s\n").arg(QString::number(avg));
-        emit sendLogs(speed, Qt::white, LogCode::INFO);
+        stats.append(speed);
+        if (!m_isMultithread)
+            emit sendLogs(speed, Qt::white, LogCode::INFO);
     }
 
     if (m_totalBytesInput > 0 && m_totalBytesOutput > 0) {
@@ -461,8 +490,16 @@ void ConversionThread::calculateStats()
             QString("\tTotal in: %1 %3\n\tTotal out: %2 %3").arg(QString::number(inKB), QString::number(outKB), suffix);
         const QString diffDelta =
             QString("\tOut-in delta: %2%1\%\n").arg(QString::number(delta), ((delta > 0) ? QString("+") : QString("")));
-        emit sendLogs(diff, Qt::white, LogCode::INFO);
-        emit sendLogs(diffDelta, statLogCol, LogCode::INFO);
+        stats.append(diff);
+        stats.append(diffDelta);
+        if (!m_isMultithread) {
+            emit sendLogs(diff, Qt::white, LogCode::INFO);
+            emit sendLogs(diffDelta, statLogCol, LogCode::INFO);
+        }
+    }
+
+    if (m_isMultithread && (m_averageMps > 0.0 || (m_totalBytesInput > 0 && m_totalBytesOutput > 0))) {
+        emit sendLogs(stats.join('\n'), statLogCol, LogCode::INFO);
     }
 }
 

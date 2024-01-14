@@ -431,9 +431,9 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         const QString outpfile = QDir::cleanPath(outp.absolutePath() + QDir::separator() + fin.fileName());
         if (!QFile::copy(fin.absoluteFilePath(), outpfile)) {
             if (QFile::exists(outpfile)) {
-                emit sendLogs(QString("Failed to copy source file: file already exists."), errLogCol, LogCode::INFO);
+                emit sendLogs(QString("Cannot copy source file: file already exists on destination folder"), warnLogCol, LogCode::INFO);
             } else {
-                emit sendLogs(QString("Unable to copy source file to destination folder."), errLogCol, LogCode::INFO);
+                emit sendLogs(QString("Failed to copy source file to destination folder"), errLogCol, LogCode::INFO);
             }
         } else {
             emit sendLogs(QString("File copied."), warnLogCol, LogCode::INFO);

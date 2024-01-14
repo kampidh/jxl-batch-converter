@@ -36,7 +36,10 @@ public:
     QStringList m_supportedCjpegliFormats;
     QStringList m_supportedDjpegliFormats;
 
+    QString m_currentFilename;
     QStringList m_accumulatedLogs;
+    QStringList m_errorFiles;
+    QStringList m_timeoutFiles;
 
     int m_majorVer = 0;
     int m_minorVer = 0;
@@ -813,6 +816,8 @@ void MainWindow::resetUi()
         d->m_threadList.clear();
     }
 
+    logText->document()->setMaximumBlockCount(0);
+
     if (!d->m_accumulatedLogs.isEmpty()) {
         logText->setTextColor(statLogCol);
         int numthread = 1;
@@ -868,7 +873,32 @@ void MainWindow::resetUi()
             logText->append("All image(s) successfully converted");
         } else {
             logText->append("Some image(s) have errors during conversion");
+            if (!d->m_errorFiles.isEmpty()) {
+                logText->setTextColor(errLogCol);
+                logText->append(QString("\nError file(s) %1:").arg(d->m_errorFiles.size()));
+                logText->setTextColor(Qt::white);
+                foreach (const auto &err, d->m_errorFiles) {
+                    logText->append(QString("\t%1").arg(err));
+                }
+                if (copyOnErrorchk->isChecked()) {
+                    logText->append("Copy file on error enabled, the file(s) are copied to destination folder");
+                } else {
+                    logText->append("Skip file on error enabled, the file(s) are not copied");
+                }
+            }
         }
+
+        if (!d->m_timeoutFiles.isEmpty()) {
+            logText->setTextColor(warnLogCol);
+            logText->append(QString("\nTimeout file(s) %1:").arg(d->m_timeoutFiles.size()));
+            logText->setTextColor(Qt::white);
+            foreach (const auto &err, d->m_timeoutFiles) {
+                logText->append(QString("\t%1").arg(err));
+            }
+        }
+
+        d->m_timeoutFiles.clear();
+        d->m_errorFiles.clear();
 
         logText->append(QString("\nElapsed time: %1 second(s)").arg(QString::number(decodeTime)));
         logText->setTextColor(Qt::darkGray);
@@ -876,6 +906,8 @@ void MainWindow::resetUi()
 
         logText->setTextColor(Qt::white);
     }
+
+    logText->document()->setMaximumBlockCount(maxLinesSpinBox->value());
 
     selectionTabWdg->setEnabled(true);
     convertBtn->setEnabled(true);
@@ -907,11 +939,18 @@ void MainWindow::dumpLogs(const QString &logs, const QColor &col, const LogCode 
         d->m_accumulatedLogs.append(logs);
         return;
     }
+
     switch (isErr) {
     case LogCode::FILE_IN:
+        if (!logs.isEmpty()) {
+            d->m_currentFilename = logs.split('\n', Qt::SkipEmptyParts).last();
+        }
         d->m_numFiles++;
         break;
     case LogCode::ENCODE_ERR:
+        if (!d->m_currentFilename.isEmpty()) {
+            d->m_errorFiles.append(d->m_currentFilename);
+        }
         d->m_numEncodeError++;
         break;
     case LogCode::OUT_FOLDER_ERR:
@@ -921,6 +960,9 @@ void MainWindow::dumpLogs(const QString &logs, const QColor &col, const LogCode 
         d->m_numSkippedWarning++;
         break;
     case LogCode::SKIPPED_TIMEOUT:
+        if (!d->m_currentFilename.isEmpty()) {
+            d->m_timeoutFiles.append(d->m_currentFilename);
+        }
         d->m_numTimeoutWarning++;
         break;
     default:

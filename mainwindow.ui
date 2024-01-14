@@ -265,7 +265,7 @@ color: rgb(255, 255, 255);</string>
                   <bool>true</bool>
                  </property>
                  <property name="toolTip">
-                  <string>If enabled, only convert listed extensions.</string>
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If enabled, only convert listed extensions, separated by semicolon (Example: jpg;png;gif).&lt;/p&gt;&lt;p&gt;Use wildcard (*) to scan &lt;span style=&quot; font-weight:700;&quot;&gt;all files&lt;/span&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
                  <property name="title">
                   <string>Override extensions (separate with semicolon)</string>

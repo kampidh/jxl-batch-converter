@@ -107,6 +107,7 @@ MainWindow::MainWindow(QWidget *parent)
     outputFileDir->setText(d->m_currentSetting->value("outDir").toString());
     overrideExtChk->setChecked(d->m_currentSetting->value("overrideExtChk", false).toBool());
     overrideExtLine->setText(d->m_currentSetting->value("overrideExtText", QString("jpg;png;gif")).toString());
+    keepDateChkBox->setChecked(d->m_currentSetting->value("keepDateChkBox", false).toBool());
 
     distanceRadio->setChecked(d->m_currentSetting->value("distChecked", true).toBool());
     distanceSpinBox->setValue(d->m_currentSetting->value("distValue", 1.0).toDouble());
@@ -217,6 +218,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     d->m_currentSetting->setValue("outDir", outputFileDir->text());
     d->m_currentSetting->setValue("overrideExtChk", overrideExtChk->isChecked());
     d->m_currentSetting->setValue("overrideExtText", overrideExtLine->text());
+    d->m_currentSetting->setValue("keepDateChkBox", keepDateChkBox->isChecked());
 
     d->m_currentSetting->setValue("distChecked", distanceRadio->isChecked());
     d->m_currentSetting->setValue("distValue", distanceSpinBox->value());
@@ -527,6 +529,7 @@ void MainWindow::convertBtnPressed()
     encOptions.insert("globalStopOnError", (stopOnErrorchkBox->isChecked() ? "1" : "0"));
     encOptions.insert("globalCopyOnError", (copyOnErrorchk->isChecked() ? "1" : "0"));
     encOptions.insert("useMultithread", ((threadSpinBox->value() > 1) ? "1" : "0"));
+    encOptions.insert("keepDateTime", (keepDateChkBox->isChecked() ? "1" : "0"));
 
     QDir outUrl(outputFileDir->text());
     if (!outUrl.exists()) {

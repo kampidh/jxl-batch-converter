@@ -21,7 +21,7 @@ HEADERS += \
 FORMS += \
     mainwindow.ui
 
-VERSION = 0.4.1
+VERSION = 0.4.2
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 # Default rules for deployment.

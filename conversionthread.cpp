@@ -6,6 +6,7 @@
 
 #include "conversionthread.h"
 
+#include <QDateTime>
 #include <QDebug>
 #include <QProcess>
 #include <QMapIterator>
@@ -70,6 +71,10 @@ void ConversionThread::initArgs(const QMap<QString, QString> &args)
 
         if (mit.key() == "useMultithread" && mit.value() == "1") {
             m_isMultithread = true;
+        }
+
+        if (mit.key() == "keepDateTime" && mit.value() == "1") {
+            m_keepDateTime = true;
         }
 
         if (mit.key() == "customFlags") {
@@ -191,6 +196,7 @@ void ConversionThread::resetValues()
     m_copyOnError = false;
     m_haveCustomArgs = false;
     m_isMultithread = false;
+    m_keepDateTime = false;
 
     m_customArgs.clear();
 
@@ -437,6 +443,16 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
             }
         } else {
             emit sendLogs(QString("File copied."), warnLogCol, LogCode::INFO);
+            // Seems unneccessary on Windows.
+            // if (m_keepDateTime) {
+            //     QFile outFileOpen(outpfile);
+            //     outFileOpen.open(QIODevice::ReadWrite);
+            //     outFileOpen.setFileTime(fin.fileTime(QFileDevice::FileBirthTime), QFileDevice::FileBirthTime);
+            //     outFileOpen.setFileTime(fin.fileTime(QFileDevice::FileAccessTime), QFileDevice::FileAccessTime);
+            //     outFileOpen.setFileTime(fin.fileTime(QFileDevice::FileMetadataChangeTime), QFileDevice::FileMetadataChangeTime);
+            //     outFileOpen.setFileTime(fin.fileTime(QFileDevice::FileModificationTime), QFileDevice::FileModificationTime);
+            //     outFileOpen.close();
+            // }
         }
         const QString outFileStr = QString("Output:\n%1\n").arg(outpfile);
         emit sendLogs(outFileStr, Qt::white, LogCode::INFO);
@@ -457,6 +473,16 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         emit sendLogs(outFileStr, Qt::white, LogCode::INFO);
     } else {
         emit sendLogs(QString(" "), Qt::white, LogCode::INFO);
+    }
+
+    if (m_keepDateTime) {
+        QFile outFileOpen(fout);
+        outFileOpen.open(QIODevice::ReadWrite);
+        outFileOpen.setFileTime(inFile.fileTime(QFileDevice::FileBirthTime), QFileDevice::FileBirthTime);
+        outFileOpen.setFileTime(inFile.fileTime(QFileDevice::FileAccessTime), QFileDevice::FileAccessTime);
+        outFileOpen.setFileTime(inFile.fileTime(QFileDevice::FileMetadataChangeTime), QFileDevice::FileMetadataChangeTime);
+        outFileOpen.setFileTime(inFile.fileTime(QFileDevice::FileModificationTime), QFileDevice::FileModificationTime);
+        outFileOpen.close();
     }
 
     return true;

@@ -55,6 +55,7 @@ private:
     bool m_haveCustomArgs = false;
     bool m_useFileList = false;
     bool m_isMultithread = false;
+    bool m_keepDateTime = false;
 
     double m_averageMps = 0.0;
     int m_mpsSamples = 0;

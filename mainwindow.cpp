@@ -16,6 +16,7 @@
 #include <QProcess>
 #include <QSettings>
 #include <QMimeData>
+#include <QScreen>
 
 class Q_DECL_HIDDEN MainWindow::Private
 {
@@ -195,8 +196,13 @@ MainWindow::MainWindow(QWidget *parent)
     const QString titleWithVer = QString("%1 - v%2").arg(windowTitle(), QString(APP_VERSION));
     setWindowTitle(titleWithVer);
 
+    const QScreen *currentWin = window()->screen();
+    const QSize screenSize = currentWin->size();
+
     // adjustSize();
-    resize(minimumSizeHint());
+    if (screenSize.height() < 1000) {
+        resize(minimumSizeHint());
+    }
     cjxlChecker();
 }
 

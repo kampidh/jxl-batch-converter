@@ -195,8 +195,8 @@ MainWindow::MainWindow(QWidget *parent)
     const QString titleWithVer = QString("%1 - v%2").arg(windowTitle(), QString(APP_VERSION));
     setWindowTitle(titleWithVer);
 
-    adjustSize();
-    // resize(minimumSizeHint());
+    // adjustSize();
+    resize(minimumSizeHint());
     cjxlChecker();
 }
 
@@ -735,6 +735,9 @@ void MainWindow::printHelpBtnPressed()
         break;
     case 1:
         helper << "-h";
+        if (d->m_fullVer >= 9000) {
+            helper << "-v" << "-v" << "-v";
+        }
         d->m_execBin->start(d->m_djxlDir, helper);
         break;
     case 2:

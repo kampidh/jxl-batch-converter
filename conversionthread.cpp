@@ -20,6 +20,8 @@ ConversionThread::ConversionThread(QObject *parent)
     : QThread(parent)
 {
     resetValues();
+
+    m_ls = LogStats::instance();
 }
 
 ConversionThread::~ConversionThread()
@@ -431,17 +433,21 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         emit sendLogs(rawStd, Qt::white, LogCode::INFO);
     }
 
+    QString absOutputFile(fout);
+
     if (haveErrors && m_copyOnError) {
         emit sendLogs(QString("Copying source file to destination folder instead..."), warnLogCol, LogCode::INFO);
         const QFileInfo outp(fout);
         const QString outpfile = QDir::cleanPath(outp.absolutePath() + QDir::separator() + fin.fileName());
         if (!QFile::copy(fin.absoluteFilePath(), outpfile)) {
             if (QFile::exists(outpfile)) {
+                absOutputFile = outpfile;
                 emit sendLogs(QString("Cannot copy source file: file already exists on destination folder"), warnLogCol, LogCode::INFO);
             } else {
                 emit sendLogs(QString("Failed to copy source file to destination folder"), errLogCol, LogCode::INFO);
             }
         } else {
+            absOutputFile = outpfile;
             emit sendLogs(QString("File copied."), warnLogCol, LogCode::INFO);
             // Seems unneccessary on Windows.
             // if (m_keepDateTime) {
@@ -475,6 +481,19 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         emit sendLogs(QString(" "), Qt::white, LogCode::INFO);
     }
 
+    QFileInfo absOutFile(absOutputFile);
+    if (m_ls) {
+        if ((inFile.exists() && !absOutFile.exists() && !m_disableOutput)) {
+            m_ls->addFiles(inFile.absoluteFilePath(), false);
+        } else if (inFile.exists() && absOutFile.exists() && !m_disableOutput) {
+            if (inFile.absoluteFilePath() == absOutFile.absoluteFilePath()) {
+                m_ls->addFiles(inFile.absoluteFilePath(), false);
+            } else {
+                m_ls->addFiles(inFile.absoluteFilePath(), true);
+            }
+        }
+    }
+
     if (m_keepDateTime) {
         QFile outFileOpen(fout);
         outFileOpen.open(QIODevice::ReadWrite);
@@ -490,42 +509,17 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
 
 void ConversionThread::calculateStats()
 {
-    QStringList stats;
+    if (!m_ls) {
+        return;
+    }
     if (m_averageMps > 0.0) {
         const double avg = m_averageMps / static_cast<double>(m_mpsSamples);
-        const QString speed = QString("\tAverage speed: %1 MP/s\n").arg(QString::number(avg));
-        stats.append(speed);
-        if (!m_isMultithread)
-            emit sendLogs(speed, Qt::white, LogCode::INFO);
+        m_ls->addMpps(avg);
     }
 
     if (m_totalBytesInput > 0 && m_totalBytesOutput > 0) {
-        const double delta =
-            ((static_cast<double>(m_totalBytesOutput) * 1.0) / (static_cast<double>(m_totalBytesInput) * 1.0) * 100.0) - 100.0;
-        double inKB = static_cast<double>(m_totalBytesInput) / 1024.0;
-        double outKB = static_cast<double>(m_totalBytesOutput) / 1024.0;
-        QString suffix;
-        if (inKB > 10000.0) {
-            suffix = QString("MiB");
-            inKB = inKB / 1024.0;
-            outKB = outKB / 1024.0;
-        } else {
-            suffix = QString("KiB");
-        }
-        const QString diff =
-            QString("\tTotal in: %1 %3\n\tTotal out: %2 %3").arg(QString::number(inKB), QString::number(outKB), suffix);
-        const QString diffDelta =
-            QString("\tOut-in delta: %2%1\%\n").arg(QString::number(delta), ((delta > 0) ? QString("+") : QString("")));
-        stats.append(diff);
-        stats.append(diffDelta);
-        if (!m_isMultithread) {
-            emit sendLogs(diff, Qt::white, LogCode::INFO);
-            emit sendLogs(diffDelta, statLogCol, LogCode::INFO);
-        }
-    }
-
-    if (m_isMultithread && (m_averageMps > 0.0 || (m_totalBytesInput > 0 && m_totalBytesOutput > 0))) {
-        emit sendLogs(stats.join('\n'), statLogCol, LogCode::INFO);
+        m_ls->addInputBytes(m_totalBytesInput);
+        m_ls->addOutputBytes(m_totalBytesOutput);
     }
 }
 

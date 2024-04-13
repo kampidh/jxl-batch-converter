@@ -11,17 +11,19 @@ CONFIG += c++17
 SOURCES += \
     conversionthread.cpp \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    utils/logstats.cpp
 
 HEADERS += \
     conversionthread.h \
     logcodes.h \
-    mainwindow.h
+    mainwindow.h \
+    utils/logstats.h
 
 FORMS += \
     mainwindow.ui
 
-VERSION = 0.4.3
+VERSION = 0.5.0
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 # Default rules for deployment.

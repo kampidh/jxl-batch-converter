@@ -7,6 +7,7 @@
 #include "mainwindow.h"
 #include "conversionthread.h"
 #include "ui_mainwindow.h"
+#include "utils/logstats.h"
 
 #include <QCloseEvent>
 #include <QDebug>
@@ -38,7 +39,6 @@ public:
     QStringList m_supportedDjpegliFormats;
 
     QString m_currentFilename;
-    QStringList m_accumulatedLogs;
     QStringList m_errorFiles;
     QStringList m_timeoutFiles;
 
@@ -50,6 +50,8 @@ public:
     QList<ConversionThread *> m_threadList;
     QElapsedTimer m_eTimer;
     QSettings *m_currentSetting;
+
+    LogStats *ls{nullptr};
 
     int m_numFiles = 0;
     int m_numEncodeError = 0;
@@ -204,6 +206,9 @@ MainWindow::MainWindow(QWidget *parent)
         resize(minimumSizeHint());
     }
     cjxlChecker();
+
+    d->ls = LogStats::instance();
+    d->ls->resetValues();
 }
 
 MainWindow::~MainWindow()
@@ -830,18 +835,37 @@ void MainWindow::resetUi()
 
     logText->document()->setMaximumBlockCount(0);
 
-    if (!d->m_accumulatedLogs.isEmpty()) {
-        logText->setTextColor(statLogCol);
-        int numthread = 1;
-        foreach (const auto &acc, d->m_accumulatedLogs) {
-            logText->setTextColor(Qt::white);
-            logText->append(QString("Thread %1:").arg(QString::number(numthread)));
-            logText->setTextColor(statLogCol);
-            logText->append(acc);
-            numthread++;
+    if (d->ls->isDataValid()) {
+        const quint64 tInput = d->ls->readTotalInputBytes();
+        const quint64 tOutput = d->ls->readTotalOutputBytes();
+        const double aMpps = d->ls->readAverageMpps();
+
+        const QString speed = QString("\tAverage speed: %1 MP/s\n").arg(QString::number(aMpps));
+        const double delta =
+            ((static_cast<double>(tOutput) * 1.0) / (static_cast<double>(tInput) * 1.0) * 100.0) - 100.0;
+        double inKB = static_cast<double>(tInput) / 1024.0;
+        double outKB = static_cast<double>(tOutput) / 1024.0;
+        QString suffix;
+        if (inKB > 10000.0) {
+            suffix = QString("MiB");
+            inKB = inKB / 1024.0;
+            outKB = outKB / 1024.0;
+        } else {
+            suffix = QString("KiB");
         }
+        const QString diff =
+            QString("\tTotal in: %1 %3\n\tTotal out: %2 %3").arg(QString::number(inKB), QString::number(outKB), suffix);
+        const QString diffDelta =
+            QString("\tOut-in delta: %2%1\%\n").arg(QString::number(delta), ((delta > 0) ? QString("+") : QString("")));
+
         logText->setTextColor(Qt::white);
-        d->m_accumulatedLogs.clear();
+        logText->append(speed);
+        logText->append(diff);
+        logText->setTextColor(statLogCol);
+        logText->append(diffDelta);
+        logText->setTextColor(Qt::white);
+
+        d->ls->resetValues();
     }
 
     const float decodeTime = d->m_eTimer.elapsed() / 1000.0;
@@ -946,10 +970,6 @@ void MainWindow::dumpLogs(const QString &logs, const QColor &col, const LogCode 
                 }
             }
         }
-    }
-    if (threadSpinBox->value() > 1 && logs.contains('\t')) {
-        d->m_accumulatedLogs.append(logs);
-        return;
     }
 
     switch (isErr) {

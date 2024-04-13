@@ -8,6 +8,7 @@
 #define CONVERSIONTHREAD_H
 
 #include "logcodes.h"
+#include "utils/logstats.h"
 
 #include <QProcess>
 #include <QDirIterator>
@@ -72,6 +73,8 @@ private:
     QStringList m_finBatch;
     QStringList m_customArgs;
     QMap<QString, QString> m_encOpts;
+
+    LogStats *m_ls = nullptr;
 
     QMutex mutex;
     bool m_abort = false;

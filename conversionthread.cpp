@@ -377,6 +377,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
             cjxlBin.kill();
             cjxlBin.waitForFinished(5000);
             emit sendLogs(QString("Aborted\n"), errLogCol, LogCode::INFO);
+            m_ls->addFiles(fin.absoluteFilePath(), false, false);
             return false;
         }
         if (haveTimeout) {
@@ -387,6 +388,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
                                   .arg(QString::number(m_globalTimeout)),
                               warnLogCol,
                               LogCode::SKIPPED_TIMEOUT);
+                m_ls->addFiles(fin.absoluteFilePath(), false, false);
                 return true;
             }
         }

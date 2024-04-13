@@ -494,7 +494,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         }
     }
 
-    if (m_keepDateTime) {
+    if (m_keepDateTime && QFile::exists(fout)) {
         QFile outFileOpen(fout);
         outFileOpen.open(QIODevice::ReadWrite);
         outFileOpen.setFileTime(inFile.fileTime(QFileDevice::FileBirthTime), QFileDevice::FileBirthTime);

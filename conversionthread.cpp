@@ -433,6 +433,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         emit sendLogs(rawStd, Qt::white, LogCode::INFO);
     }
 
+    // may change if file is copied
     QString absOutputFile(fout);
 
     if (haveErrors && m_copyOnError) {
@@ -481,20 +482,28 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         emit sendLogs(QString(" "), Qt::white, LogCode::INFO);
     }
 
+    // clean empty (zero-sized) files that might appear on failed conversion
+    if (outFile.exists() && outFile.size() == 0) {
+        QFile::remove(outFile.absoluteFilePath());
+    }
+
     QFileInfo absOutFile(absOutputFile);
     if (m_ls) {
         if ((inFile.exists() && !absOutFile.exists() && !m_disableOutput)) {
+            // output file didn't exist == failed conversion
             m_ls->addFiles(inFile.absoluteFilePath(), false, false);
         } else if (inFile.exists() && absOutFile.exists() && !m_disableOutput) {
             if (inFile.fileName() == absOutFile.fileName() && haveErrors) {
+                // output file exists, but with same extension and have conversion errors == copied file
                 m_ls->addFiles(inFile.absoluteFilePath(), false, true);
             } else {
+                // output file exists but have different extension == successful conversion
                 m_ls->addFiles(inFile.absoluteFilePath(), true, true);
             }
         }
     }
 
-    if (m_keepDateTime && QFile::exists(fout)) {
+    if (m_keepDateTime && outFile.exists()) {
         QFile outFileOpen(fout);
         outFileOpen.open(QIODevice::ReadWrite);
         outFileOpen.setFileTime(inFile.fileTime(QFileDevice::FileBirthTime), QFileDevice::FileBirthTime);

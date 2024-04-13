@@ -484,12 +484,12 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
     QFileInfo absOutFile(absOutputFile);
     if (m_ls) {
         if ((inFile.exists() && !absOutFile.exists() && !m_disableOutput)) {
-            m_ls->addFiles(inFile.absoluteFilePath(), false);
+            m_ls->addFiles(inFile.absoluteFilePath(), false, false);
         } else if (inFile.exists() && absOutFile.exists() && !m_disableOutput) {
-            if (inFile.absoluteFilePath() == absOutFile.absoluteFilePath()) {
-                m_ls->addFiles(inFile.absoluteFilePath(), false);
+            if (inFile.fileName() == absOutFile.fileName() && haveErrors) {
+                m_ls->addFiles(inFile.absoluteFilePath(), false, true);
             } else {
-                m_ls->addFiles(inFile.absoluteFilePath(), true);
+                m_ls->addFiles(inFile.absoluteFilePath(), true, true);
             }
         }
     }

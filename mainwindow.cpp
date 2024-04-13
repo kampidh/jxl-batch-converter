@@ -18,6 +18,7 @@
 #include <QSettings>
 #include <QMimeData>
 #include <QScreen>
+#include <QMessageBox>
 
 class Q_DECL_HIDDEN MainWindow::Private
 {
@@ -111,6 +112,11 @@ MainWindow::MainWindow(QWidget *parent)
     overrideExtChk->setChecked(d->m_currentSetting->value("overrideExtChk", false).toBool());
     overrideExtLine->setText(d->m_currentSetting->value("overrideExtText", QString("jpg;png;gif")).toString());
     keepDateChkBox->setChecked(d->m_currentSetting->value("keepDateChkBox", false).toBool());
+    sameFolderChk->setChecked(d->m_currentSetting->value("sameFolderChk", false).toBool());
+    if (sameFolderChk->isChecked() && inputTab->currentIndex() == 0) {
+        outputFileDir->setEnabled(!sameFolderChk->isChecked());
+    }
+    clearListAfterConvChk->setChecked(d->m_currentSetting->value("clearListAfterConvChk", false).toBool());
 
     distanceRadio->setChecked(d->m_currentSetting->value("distChecked", true).toBool());
     distanceSpinBox->setValue(d->m_currentSetting->value("distValue", 1.0).toDouble());
@@ -160,6 +166,8 @@ MainWindow::MainWindow(QWidget *parent)
     stopOnErrorchkBox->setChecked(d->m_currentSetting->value("stopOnError", false).toBool());
     copyOnErrorchk->setChecked(d->m_currentSetting->value("copyOnError", false).toBool());
     maxLinesSpinBox->setValue(d->m_currentSetting->value("maxLogLines", 1000).toInt());
+    deleteInputAfterConvChk->setChecked(d->m_currentSetting->value("deleteInputAfterConvChk").toBool());
+    deleteInputPermaChk->setChecked(d->m_currentSetting->value("deleteInputPermaChk").toBool());
 
     logText->document()->setMaximumBlockCount(maxLinesSpinBox->value());
 
@@ -194,6 +202,28 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(addFilesBtn, SIGNAL(clicked(bool)), this, SLOT(addFilesToItemList()));
     connect(removeFilesBtn, SIGNAL(clicked(bool)), this, SLOT(removeSelectedFilesFromList()));
+    connect(removeAllFilesBtn, SIGNAL(clicked(bool)), fileListView, SLOT(clear()));
+
+    connect(removeAllFilesBtn, &QPushButton::clicked, this, [&]() {
+        fileListView->clear();
+        fileCountLbl->setText(QString("File(s): %1").arg(fileListView->count()));
+    });
+
+    connect(sameFolderChk, &QCheckBox::stateChanged, this, [&](const int &v) {
+        outputFileDir->setEnabled(!sameFolderChk->isChecked());
+    });
+
+    connect(inputTab, &QTabWidget::currentChanged, this, [&](const int &v) {
+        if (v == 0) {
+            if (sameFolderChk->isChecked()) {
+                outputFileDir->setEnabled(false);
+            } else {
+                outputFileDir->setEnabled(true);
+            }
+        } else if (v == 1) {
+            outputFileDir->setEnabled(true);
+        }
+    });
 
     const QString titleWithVer = QString("%1 - v%2").arg(windowTitle(), QString(APP_VERSION));
     setWindowTitle(titleWithVer);
@@ -230,6 +260,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
     d->m_currentSetting->setValue("overrideExtChk", overrideExtChk->isChecked());
     d->m_currentSetting->setValue("overrideExtText", overrideExtLine->text());
     d->m_currentSetting->setValue("keepDateChkBox", keepDateChkBox->isChecked());
+    d->m_currentSetting->setValue("sameFolderChk", sameFolderChk->isChecked());
+    d->m_currentSetting->setValue("clearListAfterConvChk", clearListAfterConvChk->isChecked());
 
     d->m_currentSetting->setValue("distChecked", distanceRadio->isChecked());
     d->m_currentSetting->setValue("distValue", distanceSpinBox->value());
@@ -269,6 +301,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
     d->m_currentSetting->setValue("stopOnError", stopOnErrorchkBox->isChecked());
     d->m_currentSetting->setValue("copyOnError", copyOnErrorchk->isChecked());
     d->m_currentSetting->setValue("maxLogLines", maxLinesSpinBox->value());
+    d->m_currentSetting->setValue("deleteInputAfterConvChk", deleteInputAfterConvChk->isChecked());
+    d->m_currentSetting->setValue("deleteInputPermaChk", deleteInputPermaChk->isChecked());
 
     event->accept();
 }
@@ -418,6 +452,9 @@ void MainWindow::outputBtnPressed()
 
 void MainWindow::convertBtnPressed()
 {
+    if (d->ls) {
+        d->ls->resetValues();
+    }
     logText->clear();
     logText->setTextColor(Qt::white);
 
@@ -542,7 +579,15 @@ void MainWindow::convertBtnPressed()
     encOptions.insert("useMultithread", ((threadSpinBox->value() > 1) ? "1" : "0"));
     encOptions.insert("keepDateTime", (keepDateChkBox->isChecked() ? "1" : "0"));
 
-    QDir outUrl(outputFileDir->text());
+    const QString outputDirStr = [&](){
+        if (sameFolderChk->isChecked() && inputTab->currentIndex() == 0) {
+            return inputFileDir->text();
+        } else {
+            return outputFileDir->text();
+        }
+    }();
+
+    QDir outUrl(outputDirStr);
     if (!outUrl.exists()) {
         if (!outUrl.mkpath(".")) {
             dumpLogs(QString("Error: cannot create output directory!"), errLogCol, LogCode::INFO);
@@ -551,7 +596,7 @@ void MainWindow::convertBtnPressed()
         }
     }
 
-    QFileInfo outTestFile(outputFileDir->text());
+    QFileInfo outTestFile(outputDirStr);
     if (!outTestFile.isWritable()) {
         dumpLogs(QString("Output error: permission denied!"), errLogCol, LogCode::INFO);
         resetUi();
@@ -653,9 +698,9 @@ void MainWindow::convertBtnPressed()
         QStringList dits;
         while (dit.hasNext()) {
             const QString ditto = dit.next();
-            if (!ditto.contains(outputFileDir->text())) {
+            // if (!ditto.contains(outputDirStr)) {
                 dits.append(ditto);
-            }
+            // }
         }
 
         const int numthr = threadSpinBox->value();
@@ -671,7 +716,7 @@ void MainWindow::convertBtnPressed()
 
         foreach (const auto &c, ditlist) {
             ConversionThread *ct = new ConversionThread();
-            ct->processFilesWithList(binPath, c, outputFileDir->text(), encOptions, false);
+            ct->processFilesWithList(binPath, c, outputDirStr, encOptions, false);
             d->m_threadList.append(ct);
         }
 
@@ -713,7 +758,7 @@ void MainWindow::convertBtnPressed()
 
         foreach (const auto &c, ditlist) {
             ConversionThread *ct = new ConversionThread();
-            ct->processFilesWithList(binPath, c, outputFileDir->text(), encOptions, true);
+            ct->processFilesWithList(binPath, c, outputDirStr, encOptions, true);
             d->m_threadList.append(ct);
         }
 
@@ -836,34 +881,84 @@ void MainWindow::resetUi()
     logText->document()->setMaximumBlockCount(0);
 
     if (d->ls->isDataValid()) {
-        const quint64 tInput = d->ls->readTotalInputBytes();
-        const quint64 tOutput = d->ls->readTotalOutputBytes();
-        const double aMpps = d->ls->readAverageMpps();
+        if (d->ls->readTotalOutputBytes() > 0) {
+            const quint64 tInput = d->ls->readTotalInputBytes();
+            const quint64 tOutput = d->ls->readTotalOutputBytes();
+            const double aMpps = d->ls->readAverageMpps();
 
-        const QString speed = QString("\tAverage speed: %1 MP/s\n").arg(QString::number(aMpps));
-        const double delta =
-            ((static_cast<double>(tOutput) * 1.0) / (static_cast<double>(tInput) * 1.0) * 100.0) - 100.0;
-        double inKB = static_cast<double>(tInput) / 1024.0;
-        double outKB = static_cast<double>(tOutput) / 1024.0;
-        QString suffix;
-        if (inKB > 10000.0) {
-            suffix = QString("MiB");
-            inKB = inKB / 1024.0;
-            outKB = outKB / 1024.0;
-        } else {
-            suffix = QString("KiB");
+            const QString speed = QString("\tAverage speed: %1 MP/s\n").arg(QString::number(aMpps));
+            const double delta =
+                ((static_cast<double>(tOutput) * 1.0) / (static_cast<double>(tInput) * 1.0) * 100.0) - 100.0;
+            double inKB = static_cast<double>(tInput) / 1024.0;
+            double outKB = static_cast<double>(tOutput) / 1024.0;
+            QString suffix;
+            if (inKB > 10000.0) {
+                suffix = QString("MiB");
+                inKB = inKB / 1024.0;
+                outKB = outKB / 1024.0;
+            } else {
+                suffix = QString("KiB");
+            }
+            const QString diff =
+                QString("\tTotal in: %1 %3\n\tTotal out: %2 %3").arg(QString::number(inKB), QString::number(outKB), suffix);
+            const QString diffDelta =
+                QString("\tOut-in delta: %2%1\%\n").arg(QString::number(delta), ((delta > 0) ? QString("+") : QString("")));
+
+            logText->setTextColor(Qt::white);
+            logText->append(speed);
+            logText->append(diff);
+            logText->setTextColor(statLogCol);
+            logText->append(diffDelta);
+            logText->setTextColor(Qt::white);
         }
-        const QString diff =
-            QString("\tTotal in: %1 %3\n\tTotal out: %2 %3").arg(QString::number(inKB), QString::number(outKB), suffix);
-        const QString diffDelta =
-            QString("\tOut-in delta: %2%1\%\n").arg(QString::number(delta), ((delta > 0) ? QString("+") : QString("")));
 
-        logText->setTextColor(Qt::white);
-        logText->append(speed);
-        logText->append(diff);
-        logText->setTextColor(statLogCol);
-        logText->append(diffDelta);
-        logText->setTextColor(Qt::white);
+        if (deleteInputAfterConvChk->isChecked()) {
+            foreach (const auto &f, d->ls->readSuccessfulFiles()) {
+                if (deleteInputPermaChk->isChecked()) {
+                    QFile::remove(f);
+                } else {
+                    QFile::moveToTrash(f);
+                }
+            }
+            if (copyOnErrorchk->isChecked() && !sameFolderChk->isChecked()) {
+                foreach (const auto &f, d->ls->readFailedFiles(true)) {
+                    if (deleteInputPermaChk->isChecked()) {
+                        QFile::remove(f);
+                    } else {
+                        QFile::moveToTrash(f);
+                    }
+                }
+            }
+        }
+
+        if (inputTab->currentIndex() == 1) {
+            if (clearListAfterConvChk->isChecked() || deleteInputAfterConvChk->isChecked()) {
+                fileListView->clearSelection();
+
+                foreach (const auto &fs, d->ls->readSuccessfulFiles()) {
+                    const auto lss = fileListView->findItems(fs, Qt::MatchFixedString | Qt::MatchCaseSensitive);
+                    foreach (const auto &ls, lss) {
+                        ls->setSelected(true);
+                    }
+                }
+                if (deleteInputAfterConvChk->isChecked() && copyOnErrorchk->isChecked()) {
+                    foreach (const auto &fs, d->ls->readFailedFiles(true)) {
+                        const auto lss = fileListView->findItems(fs, Qt::MatchFixedString | Qt::MatchCaseSensitive);
+                        foreach (const auto &ls, lss) {
+                            ls->setSelected(true);
+                        }
+                    }
+                }
+
+                if (!fileListView->selectedItems().isEmpty()) {
+                    foreach (const auto &item, fileListView->selectedItems()) {
+                        delete fileListView->takeItem(fileListView->row(item));
+                    }
+                }
+            }
+
+            fileCountLbl->setText(QString("File(s): %1").arg(fileListView->count()));
+        }
 
         d->ls->resetValues();
     }

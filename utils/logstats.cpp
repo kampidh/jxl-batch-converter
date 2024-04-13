@@ -17,6 +17,7 @@ struct Q_DECL_HIDDEN LogStats::Private
     bool dataAdded{false};
     QStringList successfulFiles;
     QStringList failedFiles;
+    QStringList failedFilesNoOut;
 };
 
 LogStats::LogStats()
@@ -65,13 +66,20 @@ void LogStats::addMpps(double v)
     d->mutex.unlock();
 }
 
-void LogStats::addFiles(const QString &f, bool success)
+void LogStats::addFiles(const QString &f, bool success, bool fileCopied)
 {
     d->mutex.lock();
+    if (!d->dataAdded) {
+        d->dataAdded = true;
+    }
     if (success) {
         d->successfulFiles.append(f);
     } else {
-        d->failedFiles.append(f);
+        if (fileCopied) {
+            d->failedFiles.append(f);
+        } else {
+            d->failedFilesNoOut.append(f);
+        }
     }
     d->mutex.unlock();
 }
@@ -105,9 +113,13 @@ QStringList& LogStats::readSuccessfulFiles() const
     return d->successfulFiles;
 }
 
-QStringList& LogStats::readFailedFiles() const
+QStringList& LogStats::readFailedFiles(bool copiedFile) const
 {
-    return d->failedFiles;
+    if (copiedFile) {
+        return d->failedFiles;
+    } else {
+        return d->failedFilesNoOut;
+    }
 }
 
 void LogStats::resetValues()
@@ -120,6 +132,7 @@ void LogStats::resetValues()
     d->totalFilesProcessed = 0;
     d->successfulFiles.clear();
     d->failedFiles.clear();
+    d->failedFilesNoOut.clear();
     d->mutex.unlock();
 }
 

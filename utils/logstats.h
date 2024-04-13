@@ -17,13 +17,13 @@ public:
     void addInputBytes(quint64 v);
     void addOutputBytes(quint64 v);
     void addMpps(double v);
-    void addFiles(const QString &f, bool success);
+    void addFiles(const QString &f, bool success, bool fileCopied);
 
     quint64 readTotalInputBytes() const;
     quint64 readTotalOutputBytes() const;
     double readAverageMpps() const;
     QStringList& readSuccessfulFiles() const;
-    QStringList& readFailedFiles() const;
+    QStringList& readFailedFiles(bool copiedFile) const;
 
     void resetValues();
     bool isDataValid() const;

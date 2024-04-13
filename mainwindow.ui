@@ -245,6 +245,13 @@ color: rgb(255, 255, 255);</string>
                   </widget>
                  </item>
                  <item>
+                  <widget class="QCheckBox" name="sameFolderChk">
+                   <property name="text">
+                    <string>Use same folder for output</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
                   <spacer name="horizontalSpacer">
                    <property name="orientation">
                     <enum>Qt::Horizontal</enum>
@@ -338,7 +345,14 @@ color: rgb(255, 255, 255);</string>
                <item>
                 <widget class="QPushButton" name="removeFilesBtn">
                  <property name="text">
-                  <string>Remove Selected</string>
+                  <string>Remove selected</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="removeAllFilesBtn">
+                 <property name="text">
+                  <string>Remove all</string>
                  </property>
                 </widget>
                </item>
@@ -357,6 +371,16 @@ color: rgb(255, 255, 255);</string>
                </property>
                <property name="selectionMode">
                 <enum>QAbstractItemView::ExtendedSelection</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="clearListAfterConvChk">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Only successfuly converted files are removed&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="text">
+                <string>Clean list after successful conversion</string>
                </property>
               </widget>
              </item>
@@ -1202,13 +1226,38 @@ Press &quot;Print help&quot; to see available flags.</string>
           </layout>
          </item>
          <item>
+          <widget class="QGroupBox" name="deleteInputAfterConvChk">
+           <property name="title">
+            <string>Delete input files after successful conversion</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_5">
+            <item>
+             <widget class="QCheckBox" name="deleteInputPermaChk">
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;By default, deleted files are thrown into Recycle Bin / Trash.&lt;/p&gt;&lt;p&gt;This option will permanently delete the files instead.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="text">
+               <string>Permanently delete input files</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
           <widget class="QGroupBox" name="groupBox_2">
            <property name="title">
             <string>On encoding error:</string>
            </property>
            <layout class="QHBoxLayout" name="horizontalLayout_10">
             <item>
-             <widget class="QRadioButton" name="radioButton_3">
+             <widget class="QRadioButton" name="skipOnErrorchkBox">
               <property name="toolTip">
                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Skips the encoding and continue to next file in processing order.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>

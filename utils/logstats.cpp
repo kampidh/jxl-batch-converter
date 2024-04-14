@@ -15,9 +15,8 @@ struct Q_DECL_HIDDEN LogStats::Private
     double averageMpps{0};
 
     bool dataAdded{false};
-    QStringList successfulFiles;
-    QStringList failedFiles;
-    QStringList failedFilesNoOut;
+
+    QList<QPair<QString, LogCode>> fileLists;
 };
 
 LogStats::LogStats()
@@ -66,21 +65,13 @@ void LogStats::addMpps(double v)
     d->mutex.unlock();
 }
 
-void LogStats::addFiles(const QString &f, bool success, bool fileCopied)
+void LogStats::addFiles(const QString &f, LogCode flags)
 {
     d->mutex.lock();
     if (!d->dataAdded) {
         d->dataAdded = true;
     }
-    if (success) {
-        d->successfulFiles.append(f);
-    } else {
-        if (fileCopied) {
-            d->failedFiles.append(f);
-        } else {
-            d->failedFilesNoOut.append(f);
-        }
-    }
+    d->fileLists.append({f, flags});
     d->mutex.unlock();
 }
 
@@ -108,18 +99,52 @@ double LogStats::readAverageMpps() const
     return v;
 }
 
-QStringList& LogStats::readSuccessfulFiles() const
+QStringList LogStats::readFiles(LogCode flags) const
 {
-    return d->successfulFiles;
+    QStringList files;
+    foreach (const auto &fl, d->fileLists) {
+        if (fl.second == flags) {
+            files.append(fl.first);
+        }
+    }
+    return files;
 }
 
-QStringList& LogStats::readFailedFiles(bool copiedFile) const
+QStringList LogStats::readFiles(int flags) const
 {
-    if (copiedFile) {
-        return d->failedFiles;
-    } else {
-        return d->failedFilesNoOut;
+    QStringList files;
+    foreach (const auto &fl, d->fileLists) {
+        if (fl.second & flags) {
+            files.append(fl.first);
+        }
     }
+    return files;
+}
+
+quint64 LogStats::countFiles(LogCode flags) const
+{
+    quint64 files = 0;
+    foreach (const auto &fl, d->fileLists) {
+        if (fl.second == flags) {
+            files++;
+        }
+    }
+    return files;
+}
+
+quint64 LogStats::countFiles(int flags) const
+{
+
+    if (flags == 0) {
+        return d->fileLists.size();
+    }
+    quint64 files = 0;
+    foreach (const auto &fl, d->fileLists) {
+        if (fl.second & flags) {
+            files++;
+        }
+    }
+    return files;
 }
 
 void LogStats::resetValues()
@@ -130,9 +155,7 @@ void LogStats::resetValues()
     d->totalInputBytes = 0;
     d->averageMpps = 0;
     d->totalFilesProcessed = 0;
-    d->successfulFiles.clear();
-    d->failedFiles.clear();
-    d->failedFilesNoOut.clear();
+    d->fileLists.clear();
     d->mutex.unlock();
 }
 

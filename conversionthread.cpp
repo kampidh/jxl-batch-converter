@@ -273,6 +273,8 @@ void ConversionThread::run()
                               LogCode::OUT_FOLDER_ERR);
                 emit sendLogs(QString("Skipping..."), errLogCol, LogCode::INFO);
 
+                m_ls->addFiles(inFile.absoluteFilePath(), LogCode::OUT_FOLDER_ERR);
+
                 sizeIter++;
                 emit sendProgress(sizeIter);
 
@@ -303,6 +305,8 @@ void ConversionThread::run()
                 emit sendLogs(QString(), Qt::white, LogCode::FILE_IN);
                 emit sendLogs(QString(), warnLogCol, LogCode::SKIPPED);
             }
+
+            m_ls->addFiles(inFile.absoluteFilePath(), LogCode::SKIPPED_ALREADY_EXIST);
 
             sizeIter++;
             emit sendProgress(sizeIter);
@@ -377,7 +381,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
             cjxlBin.kill();
             cjxlBin.waitForFinished(5000);
             emit sendLogs(QString("Aborted\n"), errLogCol, LogCode::INFO);
-            m_ls->addFiles(fin.absoluteFilePath(), false, false);
+            m_ls->addFiles(fin.absoluteFilePath(), LogCode::ABORTED);
             return false;
         }
         if (haveTimeout) {
@@ -388,7 +392,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
                                   .arg(QString::number(m_globalTimeout)),
                               warnLogCol,
                               LogCode::SKIPPED_TIMEOUT);
-                m_ls->addFiles(fin.absoluteFilePath(), false, false);
+                m_ls->addFiles(fin.absoluteFilePath(), LogCode::SKIPPED_TIMEOUT);
                 return true;
             }
         }
@@ -410,7 +414,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
     if (!rawStrList.isEmpty()) {
         const QString buffer = rawStrList.join("\n");
 
-        emit sendLogs(buffer, haveErrors ? errLogCol : okayLogCol, haveErrors ? LogCode::ENCODE_ERR : LogCode::OK);
+        emit sendLogs(buffer, haveErrors ? errLogCol : okayLogCol, haveErrors ? LogCode::ENCODE_ERR_SKIP : LogCode::OK);
 
         const QString lastLine = rawStrList.last();
         if (lastLine.contains("MP/s", Qt::CaseInsensitive)) {
@@ -493,14 +497,14 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
     if (m_ls) {
         if ((inFile.exists() && !absOutFile.exists() && !m_disableOutput)) {
             // output file didn't exist == failed conversion
-            m_ls->addFiles(inFile.absoluteFilePath(), false, false);
+            m_ls->addFiles(inFile.absoluteFilePath(), LogCode::ENCODE_ERR_SKIP);
         } else if (inFile.exists() && absOutFile.exists() && !m_disableOutput) {
             if (inFile.fileName() == absOutFile.fileName() && haveErrors) {
                 // output file exists, but with same extension and have conversion errors == copied file
-                m_ls->addFiles(inFile.absoluteFilePath(), false, true);
+                m_ls->addFiles(inFile.absoluteFilePath(), LogCode::ENCODE_ERR_COPY);
             } else {
                 // output file exists but have different extension == successful conversion
-                m_ls->addFiles(inFile.absoluteFilePath(), true, true);
+                m_ls->addFiles(inFile.absoluteFilePath(), LogCode::OK);
             }
         }
     }

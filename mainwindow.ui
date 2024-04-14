@@ -1238,6 +1238,13 @@ Press &quot;Print help&quot; to see available flags.</string>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_5">
             <item>
+             <widget class="QCheckBox" name="alsoDeleteSkipChk">
+              <property name="text">
+               <string>Also delete skipped (already exist) files</string>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QCheckBox" name="deleteInputPermaChk">
               <property name="toolTip">
                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;By default, deleted files are thrown into Recycle Bin / Trash.&lt;/p&gt;&lt;p&gt;This option will permanently delete the files instead.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>

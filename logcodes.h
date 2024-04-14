@@ -5,13 +5,16 @@
 #include <QMetaType>
 
 enum LogCode {
-    INFO = 0,
-    FILE_IN,
-    OK,
-    SKIPPED,
-    SKIPPED_TIMEOUT,
-    OUT_FOLDER_ERR,
-    ENCODE_ERR
+    INFO = 1 << 0,
+    FILE_IN = 1 << 1,
+    OK = 1 << 2,
+    SKIPPED = 1 << 3,
+    SKIPPED_ALREADY_EXIST = 1 << 4,
+    SKIPPED_TIMEOUT = 1 << 5,
+    OUT_FOLDER_ERR = 1 << 6,
+    ENCODE_ERR_SKIP = 1 << 7,
+    ENCODE_ERR_COPY = 1 << 8,
+    ABORTED = 1 << 9
 };
 
 Q_DECLARE_METATYPE(LogCode);

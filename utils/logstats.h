@@ -1,6 +1,8 @@
 #ifndef LOGSTATS_H
 #define LOGSTATS_H
 
+#include "logcodes.h"
+
 #include <QScopedPointer>
 #include <QStringList>
 
@@ -17,13 +19,15 @@ public:
     void addInputBytes(quint64 v);
     void addOutputBytes(quint64 v);
     void addMpps(double v);
-    void addFiles(const QString &f, bool success, bool fileCopied);
+    void addFiles(const QString &f, LogCode flags);
 
     quint64 readTotalInputBytes() const;
     quint64 readTotalOutputBytes() const;
     double readAverageMpps() const;
-    QStringList& readSuccessfulFiles() const;
-    QStringList& readFailedFiles(bool copiedFile) const;
+    QStringList readFiles(LogCode flags) const;
+    QStringList readFiles(int flags) const;
+    quint64 countFiles(LogCode flags) const;
+    quint64 countFiles(int flags = 0) const;
 
     void resetValues();
     bool isDataValid() const;

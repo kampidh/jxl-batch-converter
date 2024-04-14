@@ -39,10 +39,6 @@ public:
     QStringList m_supportedCjpegliFormats;
     QStringList m_supportedDjpegliFormats;
 
-    QString m_currentFilename;
-    QStringList m_errorFiles;
-    QStringList m_timeoutFiles;
-
     int m_majorVer = 0;
     int m_minorVer = 0;
     int m_patchVer = 0;
@@ -54,11 +50,10 @@ public:
 
     LogStats *ls{nullptr};
 
-    int m_numFiles = 0;
-    int m_numEncodeError = 0;
-    int m_numFolderError = 0;
-    int m_numSkippedWarning = 0;
-    int m_numTimeoutWarning = 0;
+    int m_threadCounter = 0;
+    int m_multithreadNum = 1;
+
+    bool m_useMultithread = false;
 };
 
 MainWindow::MainWindow(QWidget *parent)
@@ -168,6 +163,7 @@ MainWindow::MainWindow(QWidget *parent)
     maxLinesSpinBox->setValue(d->m_currentSetting->value("maxLogLines", 1000).toInt());
     deleteInputAfterConvChk->setChecked(d->m_currentSetting->value("deleteInputAfterConvChk").toBool());
     deleteInputPermaChk->setChecked(d->m_currentSetting->value("deleteInputPermaChk").toBool());
+    alsoDeleteSkipChk->setChecked(d->m_currentSetting->value("alsoDeleteSkipChk").toBool());
 
     logText->document()->setMaximumBlockCount(maxLinesSpinBox->value());
 
@@ -210,6 +206,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     connect(sameFolderChk, &QCheckBox::stateChanged, this, [&](const int &v) {
+        Q_UNUSED(v);
         outputFileDir->setEnabled(!sameFolderChk->isChecked());
     });
 
@@ -303,6 +300,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     d->m_currentSetting->setValue("maxLogLines", maxLinesSpinBox->value());
     d->m_currentSetting->setValue("deleteInputAfterConvChk", deleteInputAfterConvChk->isChecked());
     d->m_currentSetting->setValue("deleteInputPermaChk", deleteInputPermaChk->isChecked());
+    d->m_currentSetting->setValue("alsoDeleteSkipChk", alsoDeleteSkipChk->isChecked());
 
     event->accept();
 }
@@ -455,6 +453,7 @@ void MainWindow::convertBtnPressed()
     if (d->ls) {
         d->ls->resetValues();
     }
+
     logText->clear();
     logText->setTextColor(Qt::white);
 
@@ -472,12 +471,6 @@ void MainWindow::convertBtnPressed()
     maxLinesSpinBox->setEnabled(false);
 
     logText->document()->setMaximumBlockCount(maxLinesSpinBox->value());
-
-    d->m_numFiles = 0;
-    d->m_numEncodeError = 0;
-    d->m_numFolderError = 0;
-    d->m_numSkippedWarning = 0;
-    d->m_numTimeoutWarning = 0;
 
     d->m_eTimer.start();
 
@@ -714,6 +707,11 @@ void MainWindow::convertBtnPressed()
             }
         }
 
+        d->m_multithreadNum = numthr;
+        if (numthr > 1) {
+            d->m_useMultithread = true;
+        }
+
         foreach (const auto &c, ditlist) {
             ConversionThread *ct = new ConversionThread();
             ct->processFilesWithList(binPath, c, outputDirStr, encOptions, false);
@@ -754,6 +752,11 @@ void MainWindow::convertBtnPressed()
             } else {
                 ditlist.append(dit.mid(i*bucketSize, bucketSize));
             }
+        }
+
+        d->m_multithreadNum = numthr;
+        if (numthr > 1) {
+            d->m_useMultithread = true;
         }
 
         foreach (const auto &c, ditlist) {
@@ -858,6 +861,8 @@ void MainWindow::tabIndexChanged(const int &index)
 
 void MainWindow::resetUi()
 {
+    // multithreading is tough lol
+    d->m_threadCounter++;
     if (!d->m_threadList.isEmpty()) {
         bool stillRun = false;
         foreach (const auto &ct, d->m_threadList) {
@@ -877,6 +882,13 @@ void MainWindow::resetUi()
         }
         d->m_threadList.clear();
     }
+    // make absolutely sure the next process is only called once per resetUi...
+    if (d->m_useMultithread && (d->m_threadCounter < d->m_multithreadNum)) {
+        return;
+    }
+    d->m_useMultithread = false;
+    d->m_multithreadNum = 1;
+    d->m_threadCounter = 0;
 
     logText->document()->setMaximumBlockCount(0);
 
@@ -913,15 +925,24 @@ void MainWindow::resetUi()
         }
 
         if (deleteInputAfterConvChk->isChecked()) {
-            foreach (const auto &f, d->ls->readSuccessfulFiles()) {
+            foreach (const auto &f, d->ls->readFiles(LogCode::OK)) {
                 if (deleteInputPermaChk->isChecked()) {
                     QFile::remove(f);
                 } else {
                     QFile::moveToTrash(f);
                 }
             }
+            if (alsoDeleteSkipChk->isChecked()) {
+                foreach (const auto &f, d->ls->readFiles(LogCode::SKIPPED_ALREADY_EXIST)) {
+                    if (deleteInputPermaChk->isChecked()) {
+                        QFile::remove(f);
+                    } else {
+                        QFile::moveToTrash(f);
+                    }
+                }
+            }
             if (copyOnErrorchk->isChecked() && !sameFolderChk->isChecked()) {
-                foreach (const auto &f, d->ls->readFailedFiles(true)) {
+                foreach (const auto &f, d->ls->readFiles(LogCode::ENCODE_ERR_COPY)) {
                     if (deleteInputPermaChk->isChecked()) {
                         QFile::remove(f);
                     } else {
@@ -935,17 +956,35 @@ void MainWindow::resetUi()
             if (clearListAfterConvChk->isChecked() || deleteInputAfterConvChk->isChecked()) {
                 fileListView->clearSelection();
 
-                foreach (const auto &fs, d->ls->readSuccessfulFiles()) {
+                foreach (const auto &fs, d->ls->readFiles(LogCode::OK)) {
                     const auto lss = fileListView->findItems(fs, Qt::MatchFixedString | Qt::MatchCaseSensitive);
                     foreach (const auto &ls, lss) {
                         ls->setSelected(true);
                     }
                 }
-                if (deleteInputAfterConvChk->isChecked() && copyOnErrorchk->isChecked()) {
-                    foreach (const auto &fs, d->ls->readFailedFiles(true)) {
+                if (clearListAfterConvChk->isChecked()) {
+                    foreach (const auto &fs, d->ls->readFiles(LogCode::SKIPPED_ALREADY_EXIST)) {
                         const auto lss = fileListView->findItems(fs, Qt::MatchFixedString | Qt::MatchCaseSensitive);
                         foreach (const auto &ls, lss) {
                             ls->setSelected(true);
+                        }
+                    }
+                }
+                if (deleteInputAfterConvChk->isChecked()) {
+                    if (copyOnErrorchk->isChecked()) {
+                        foreach (const auto &fs, d->ls->readFiles(LogCode::ENCODE_ERR_COPY)) {
+                            const auto lss = fileListView->findItems(fs, Qt::MatchFixedString | Qt::MatchCaseSensitive);
+                            foreach (const auto &ls, lss) {
+                                ls->setSelected(true);
+                            }
+                        }
+                    }
+                    if (alsoDeleteSkipChk->isChecked()) {
+                        foreach (const auto &fs, d->ls->readFiles(LogCode::SKIPPED_ALREADY_EXIST)) {
+                            const auto lss = fileListView->findItems(fs, Qt::MatchFixedString | Qt::MatchCaseSensitive);
+                            foreach (const auto &ls, lss) {
+                                ls->setSelected(true);
+                            }
                         }
                     }
                 }
@@ -959,13 +998,11 @@ void MainWindow::resetUi()
 
             fileCountLbl->setText(QString("File(s): %1").arg(fileListView->count()));
         }
-
-        d->ls->resetValues();
     }
 
     const float decodeTime = d->m_eTimer.elapsed() / 1000.0;
 
-    if (d->m_numFiles > 0) {
+    if (const auto num = d->ls->countFiles(); num > 0) {
         const QString separator("=----------------=");
 
         logText->setTextColor(Qt::darkGray);
@@ -974,28 +1011,28 @@ void MainWindow::resetUi()
         logText->setTextColor(Qt::white);
 
         bool haveError = false;
-        logText->append(QString("Conversion done for %1 image(s)").arg(QString::number(d->m_numFiles)));
+        logText->append(QString("Conversion done for %1 image(s)").arg(QString::number(num)));
 
-        if (d->m_numEncodeError > 0) {
+        if (const auto err = d->ls->countFiles(LogCode::ENCODE_ERR_SKIP | LogCode::ENCODE_ERR_COPY); err > 0) {
             haveError = true;
             logText->setTextColor(errLogCol);
-            logText->append(QString("\t%1 libjxl processing error(s)").arg(QString::number(d->m_numEncodeError)));
+            logText->append(QString("\t%1 libjxl processing error(s)").arg(QString::number(err)));
         }
 
-        if (d->m_numFolderError > 0) {
+        if (const auto err = d->ls->countFiles(LogCode::OUT_FOLDER_ERR); err > 0) {
             haveError = true;
             logText->setTextColor(errLogCol);
-            logText->append(QString("\t%1 output folder creation error(s)").arg(QString::number(d->m_numFolderError)));
+            logText->append(QString("\t%1 output folder creation error(s)").arg(QString::number(err)));
         }
 
-        if (d->m_numSkippedWarning > 0) {
+        if (const auto err = d->ls->countFiles(LogCode::SKIPPED_ALREADY_EXIST); err > 0) {
             logText->setTextColor(warnLogCol);
-            logText->append(QString("\t%1 skipped existing file(s)").arg(QString::number(d->m_numSkippedWarning)));
+            logText->append(QString("\t%1 skipped existing file(s)").arg(QString::number(err)));
         }
 
-        if (d->m_numTimeoutWarning > 0) {
+        if (const auto err = d->ls->countFiles(LogCode::SKIPPED_TIMEOUT); err > 0) {
             logText->setTextColor(warnLogCol);
-            logText->append(QString("\t%1 process timeout(s)").arg(QString::number(d->m_numTimeoutWarning)));
+            logText->append(QString("\t%1 process timeout(s)").arg(QString::number(err)));
         }
 
         logText->setTextColor(Qt::white);
@@ -1004,11 +1041,11 @@ void MainWindow::resetUi()
             logText->append("All image(s) successfully converted");
         } else {
             logText->append("Some image(s) have errors during conversion");
-            if (!d->m_errorFiles.isEmpty()) {
+            if (const auto err = d->ls->countFiles(LogCode::ENCODE_ERR_SKIP | LogCode::ENCODE_ERR_COPY); err > 0) {
                 logText->setTextColor(errLogCol);
-                logText->append(QString("\nError file(s) %1:").arg(d->m_errorFiles.size()));
+                logText->append(QString("\nError file(s) %1:").arg(err));
                 logText->setTextColor(Qt::white);
-                foreach (const auto &err, d->m_errorFiles) {
+                foreach (const auto &err, d->ls->readFiles(LogCode::ENCODE_ERR_SKIP | LogCode::ENCODE_ERR_COPY)) {
                     logText->append(QString("\t%1").arg(err));
                 }
                 if (copyOnErrorchk->isChecked()) {
@@ -1019,17 +1056,14 @@ void MainWindow::resetUi()
             }
         }
 
-        if (!d->m_timeoutFiles.isEmpty()) {
+        if (const auto err = d->ls->countFiles(LogCode::SKIPPED_TIMEOUT); err > 0) {
             logText->setTextColor(warnLogCol);
-            logText->append(QString("\nTimeout file(s) %1:").arg(d->m_timeoutFiles.size()));
+            logText->append(QString("\nTimeout file(s) %1:").arg(err));
             logText->setTextColor(Qt::white);
-            foreach (const auto &err, d->m_timeoutFiles) {
+            foreach (const auto &err, d->ls->readFiles(LogCode::SKIPPED_TIMEOUT)) {
                 logText->append(QString("\t%1").arg(err));
             }
         }
-
-        d->m_timeoutFiles.clear();
-        d->m_errorFiles.clear();
 
         logText->append(QString("\nElapsed time: %1 second(s)").arg(QString::number(decodeTime)));
         logText->setTextColor(Qt::darkGray);
@@ -1038,6 +1072,7 @@ void MainWindow::resetUi()
         logText->setTextColor(Qt::white);
     }
 
+    d->ls->resetValues();
     logText->document()->setMaximumBlockCount(maxLinesSpinBox->value());
 
     selectionTabWdg->setEnabled(true);
@@ -1057,6 +1092,7 @@ void MainWindow::dirChkChange()
 
 void MainWindow::dumpLogs(const QString &logs, const QColor &col, const LogCode &isErr)
 {
+    Q_UNUSED(isErr);
     if (logs.contains("Aborted: Batch set to stop on error")) {
         if (!d->m_threadList.isEmpty()) {
             foreach (const auto &ct, d->m_threadList) {
@@ -1065,35 +1101,6 @@ void MainWindow::dumpLogs(const QString &logs, const QColor &col, const LogCode 
                 }
             }
         }
-    }
-
-    switch (isErr) {
-    case LogCode::FILE_IN:
-        if (!logs.isEmpty()) {
-            d->m_currentFilename = logs.split('\n', Qt::SkipEmptyParts).last();
-        }
-        d->m_numFiles++;
-        break;
-    case LogCode::ENCODE_ERR:
-        if (!d->m_currentFilename.isEmpty()) {
-            d->m_errorFiles.append(d->m_currentFilename);
-        }
-        d->m_numEncodeError++;
-        break;
-    case LogCode::OUT_FOLDER_ERR:
-        d->m_numFolderError++;
-        break;
-    case LogCode::SKIPPED:
-        d->m_numSkippedWarning++;
-        break;
-    case LogCode::SKIPPED_TIMEOUT:
-        if (!d->m_currentFilename.isEmpty()) {
-            d->m_timeoutFiles.append(d->m_currentFilename);
-        }
-        d->m_numTimeoutWarning++;
-        break;
-    default:
-        break;
     }
 
     if (!logs.isEmpty()) {

@@ -242,6 +242,7 @@ void ConversionThread::run()
     for (const QString &fin : qAsConst(m_finBatch)) {
         if (m_abort) {
             emit sendLogs(QString("Aborted\n"), errLogCol, LogCode::INFO);
+            m_ls->addFiles(fin, LogCode::ABORTED);
             calculateStats();
             return;
         }

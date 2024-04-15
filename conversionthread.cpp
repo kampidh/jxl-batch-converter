@@ -474,6 +474,7 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
 
     if (haveErrors && m_stopOnError) {
         emit sendLogs(QString("Aborted: Batch set to stop on error\n"), errLogCol, LogCode::INFO);
+        m_ls->addFiles(fin.absoluteFilePath(), LogCode::ENCODE_ERR_ABORT);
         return false;
     }
 

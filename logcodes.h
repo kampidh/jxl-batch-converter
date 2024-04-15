@@ -14,7 +14,8 @@ enum LogCode {
     OUT_FOLDER_ERR = 1 << 6,
     ENCODE_ERR_SKIP = 1 << 7,
     ENCODE_ERR_COPY = 1 << 8,
-    ABORTED = 1 << 9
+    ENCODE_ERR_ABORT = 1 << 9,
+    ABORTED = 1 << 10
 };
 
 Q_DECLARE_METATYPE(LogCode);

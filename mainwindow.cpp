@@ -464,9 +464,8 @@ void MainWindow::convertBtnPressed()
                                              "\n\nAre you sure you want to permanently delete these input file(s) after the conversion?",
                                              QMessageBox::Yes | QMessageBox::No);
         if (pr != QMessageBox::Yes) {
-            logText->clear();
             logText->setTextColor(Qt::white);
-            logText->append("Conversion cancelled");
+            logText->append("\nConversion cancelled");
             return;
         }
     }
@@ -914,8 +913,24 @@ void MainWindow::resetUi()
     logText->document()->setMaximumBlockCount(0);
 
     quint64 deletedFilesNum = 0;
+    bool isAborted = false;
 
     if (d->ls->isDataValid()) {
+        if (d->ls->countFiles(LogCode::ABORTED | LogCode::ENCODE_ERR_ABORT) > 0) {
+            isAborted = true;
+            if (d->ls->countFiles(LogCode::OK | LogCode::SKIPPED_ALREADY_EXIST | LogCode::ENCODE_ERR_COPY) > 0
+                && deleteInputAfterConvChk->isChecked()) {
+                const auto pm =
+                    QMessageBox::information(this,
+                                             "Aborted",
+                                             "Conversion aborted (due to errors or manual abort)."
+                                             "\nDo you still want to delete already converted/copied files?",
+                                             QMessageBox::Yes | QMessageBox::No);
+                if (pm == QMessageBox::Yes) {
+                    isAborted = false;
+                }
+            }
+        }
         if (d->ls->readTotalOutputBytes() > 0) {
             const quint64 tInput = d->ls->readTotalInputBytes();
             const quint64 tOutput = d->ls->readTotalOutputBytes();
@@ -947,7 +962,7 @@ void MainWindow::resetUi()
             logText->setTextColor(Qt::white);
         }
 
-        if (deleteInputAfterConvChk->isChecked()) {
+        if (deleteInputAfterConvChk->isChecked() && !isAborted) {
             foreach (const auto &f, d->ls->readFiles(LogCode::OK)) {
                 deletedFilesNum++;
                 if (deleteInputPermaChk->isChecked()) {
@@ -979,7 +994,7 @@ void MainWindow::resetUi()
         }
 
         if (inputTab->currentIndex() == 1) {
-            if (clearListAfterConvChk->isChecked() || deleteInputAfterConvChk->isChecked()) {
+            if (clearListAfterConvChk->isChecked() || (deleteInputAfterConvChk->isChecked() && !isAborted)) {
                 fileListView->clearSelection();
 
                 foreach (const auto &fs, d->ls->readFiles(LogCode::OK)) {
@@ -996,7 +1011,7 @@ void MainWindow::resetUi()
                         }
                     }
                 }
-                if (deleteInputAfterConvChk->isChecked()) {
+                if (deleteInputAfterConvChk->isChecked() && !isAborted) {
                     if (copyOnErrorchk->isChecked()) {
                         foreach (const auto &fs, d->ls->readFiles(LogCode::ENCODE_ERR_COPY)) {
                             const auto lss = fileListView->findItems(fs, Qt::MatchFixedString | Qt::MatchCaseSensitive);
@@ -1039,7 +1054,7 @@ void MainWindow::resetUi()
         bool haveError = false;
         logText->append(QString("Conversion done for %1 image(s)").arg(QString::number(num)));
 
-        if (const auto err = d->ls->countFiles(LogCode::ENCODE_ERR_SKIP | LogCode::ENCODE_ERR_COPY); err > 0) {
+        if (const auto err = d->ls->countFiles(LogCode::ENCODE_ERR_SKIP | LogCode::ENCODE_ERR_COPY | LogCode::ENCODE_ERR_ABORT); err > 0) {
             haveError = true;
             logText->setTextColor(errLogCol);
             logText->append(QString("\t%1 libjxl processing error(s)").arg(QString::number(err)));
@@ -1067,11 +1082,11 @@ void MainWindow::resetUi()
             logText->append("All image(s) successfully converted");
         } else {
             logText->append("Some image(s) have errors during conversion");
-            if (const auto err = d->ls->countFiles(LogCode::ENCODE_ERR_SKIP | LogCode::ENCODE_ERR_COPY); err > 0) {
+            if (const auto err = d->ls->countFiles(LogCode::ENCODE_ERR_SKIP | LogCode::ENCODE_ERR_COPY | LogCode::ENCODE_ERR_ABORT); err > 0) {
                 logText->setTextColor(errLogCol);
                 logText->append(QString("\nError file(s) %1:").arg(err));
                 logText->setTextColor(Qt::white);
-                foreach (const auto &err, d->ls->readFiles(LogCode::ENCODE_ERR_SKIP | LogCode::ENCODE_ERR_COPY)) {
+                foreach (const auto &err, d->ls->readFiles(LogCode::ENCODE_ERR_SKIP | LogCode::ENCODE_ERR_COPY | LogCode::ENCODE_ERR_ABORT)) {
                     logText->append(QString("\t%1").arg(err));
                 }
                 if (copyOnErrorchk->isChecked()) {
@@ -1093,9 +1108,14 @@ void MainWindow::resetUi()
 
         if (deleteInputAfterConvChk->isChecked()) {
             logText->setTextColor(warnLogCol);
-            logText->append(QString("\nInput file(s) %2: %1")
-                                .arg(deletedFilesNum)
-                                .arg(deleteInputPermaChk->isChecked() ? "permanently deleted" : "moved to trash"));
+            if (!isAborted) {
+                logText->append(QString("\nInput file(s) %2: %1")
+                                    .arg(deletedFilesNum)
+                                    .arg(deleteInputPermaChk->isChecked() ? "permanently deleted" : "moved to trash"));
+            } else {
+                logText->append("\nConversion aborted without deleting input files.\n"
+                                "No input file(s) were deleted.");
+            }
             logText->setTextColor(Qt::white);
         }
 

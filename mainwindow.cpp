@@ -222,8 +222,15 @@ MainWindow::MainWindow(QWidget *parent)
         }
     });
 
+    connect(aboutQtButton, &QPushButton::clicked, this, [&]() {
+        QMessageBox::aboutQt(this);
+    });
+
     const QString titleWithVer = QString("%1 - v%2").arg(windowTitle(), QString(APP_VERSION));
     setWindowTitle(titleWithVer);
+
+    const QString versLabel = QString("Version %1").arg(QString(APP_VERSION));
+    versionLabel->setText(versLabel);
 
     const QScreen *currentWin = window()->screen();
     const QSize screenSize = currentWin->size();

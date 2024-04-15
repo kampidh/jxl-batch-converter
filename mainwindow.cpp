@@ -892,6 +892,8 @@ void MainWindow::resetUi()
 
     logText->document()->setMaximumBlockCount(0);
 
+    quint64 deletedFilesNum = 0;
+
     if (d->ls->isDataValid()) {
         if (d->ls->readTotalOutputBytes() > 0) {
             const quint64 tInput = d->ls->readTotalInputBytes();
@@ -926,6 +928,7 @@ void MainWindow::resetUi()
 
         if (deleteInputAfterConvChk->isChecked()) {
             foreach (const auto &f, d->ls->readFiles(LogCode::OK)) {
+                deletedFilesNum++;
                 if (deleteInputPermaChk->isChecked()) {
                     QFile::remove(f);
                 } else {
@@ -934,6 +937,7 @@ void MainWindow::resetUi()
             }
             if (alsoDeleteSkipChk->isChecked()) {
                 foreach (const auto &f, d->ls->readFiles(LogCode::SKIPPED_ALREADY_EXIST)) {
+                    deletedFilesNum++;
                     if (deleteInputPermaChk->isChecked()) {
                         QFile::remove(f);
                     } else {
@@ -943,6 +947,7 @@ void MainWindow::resetUi()
             }
             if (copyOnErrorchk->isChecked() && !sameFolderChk->isChecked()) {
                 foreach (const auto &f, d->ls->readFiles(LogCode::ENCODE_ERR_COPY)) {
+                    deletedFilesNum++;
                     if (deleteInputPermaChk->isChecked()) {
                         QFile::remove(f);
                     } else {
@@ -1063,6 +1068,14 @@ void MainWindow::resetUi()
             foreach (const auto &err, d->ls->readFiles(LogCode::SKIPPED_TIMEOUT)) {
                 logText->append(QString("\t%1").arg(err));
             }
+        }
+
+        if (deleteInputAfterConvChk->isChecked()) {
+            logText->setTextColor(warnLogCol);
+            logText->append(QString("\nInput file(s) %2: %1")
+                                .arg(deletedFilesNum)
+                                .arg(deleteInputPermaChk->isChecked() ? "permanently deleted" : "moved to trash"));
+            logText->setTextColor(Qt::white);
         }
 
         logText->append(QString("\nElapsed time: %1 second(s)").arg(QString::number(decodeTime)));

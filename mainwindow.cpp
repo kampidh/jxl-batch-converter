@@ -98,6 +98,7 @@ MainWindow::MainWindow(QWidget *parent)
     libjxlBinDir->setText(d->m_currentSetting->value("execBinDir").toString());
     recursiveChk->setChecked(d->m_currentSetting->value("recursive", false).toBool());
     inputFileDir->setText(d->m_currentSetting->value("inDir").toString());
+    inclHiddenChk->setChecked(d->m_currentSetting->value("inclHiddenChk").toBool());
 
     inputTab->setCurrentIndex(d->m_currentSetting->value("inputTabIndex", 0).toInt());
     appendListsChk->setChecked(d->m_currentSetting->value("appendLists", false).toBool());
@@ -254,6 +255,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 {
     d->m_currentSetting->setValue("execBinDir", libjxlBinDir->text());
     d->m_currentSetting->setValue("recursive", recursiveChk->isChecked());
+    d->m_currentSetting->setValue("inclHiddenChk", inclHiddenChk->isChecked());
 
     d->m_currentSetting->setValue("inputTabIndex", inputTab->currentIndex());
     d->m_currentSetting->setValue("appendLists", appendListsChk->isChecked());
@@ -698,7 +700,7 @@ void MainWindow::convertBtnPressed()
 
         QDirIterator dit(inUrl.absolutePath(),
                          spFormats,
-                         QDir::Files,
+                         QDir::Files | (inclHiddenChk->isChecked() ? QDir::Hidden : QDir::Files),
                          isRecursive ? QDirIterator::Subdirectories : QDirIterator::NoIteratorFlags);
 
         if (!dit.hasNext()) {
@@ -711,6 +713,8 @@ void MainWindow::convertBtnPressed()
         QStringList dits;
         while (dit.hasNext()) {
             const QString ditto = dit.next();
+            // This was (supposed to be) a safety check, but since it did it in one go,
+            // there's no risk of triggering infinite recursion.
             // if (!ditto.contains(outputDirStr)) {
                 dits.append(ditto);
             // }

@@ -252,6 +252,16 @@ color: rgb(255, 255, 255);</string>
                   </widget>
                  </item>
                  <item>
+                  <widget class="QCheckBox" name="inclHiddenChk">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Hidden files are skipped by default.&lt;/p&gt;&lt;p&gt;This option forces tool to also scan for hidden files.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="text">
+                    <string>Include hidden files</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
                   <spacer name="horizontalSpacer">
                    <property name="orientation">
                     <enum>Qt::Horizontal</enum>

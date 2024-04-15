@@ -450,6 +450,20 @@ void MainWindow::outputBtnPressed()
 
 void MainWindow::convertBtnPressed()
 {
+    if (deleteInputAfterConvChk->isChecked() && deleteInputPermaChk->isChecked()) {
+        const auto pr = QMessageBox::warning(this,
+                                             "Warning!",
+                                             "\"Permanently delete input files\" option is active!!"
+                                             "\n\nAre you sure you want to permanently delete these input file(s) after the conversion?",
+                                             QMessageBox::Yes | QMessageBox::No);
+        if (pr != QMessageBox::Yes) {
+            logText->clear();
+            logText->setTextColor(Qt::white);
+            logText->append("Conversion cancelled");
+            return;
+        }
+    }
+
     if (d->ls) {
         d->ls->resetValues();
     }

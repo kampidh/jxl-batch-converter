@@ -715,9 +715,17 @@ void MainWindow::convertBtnPressed()
             const QString ditto = dit.next();
             // This was (supposed to be) a safety check, but since it did it in one go,
             // there's no risk of triggering infinite recursion.
-            // if (!ditto.contains(outputDirStr)) {
+            // Scratch that, I still need it to exclude output dir if it's inside the input dir
+            if (!ditto.contains(outputDirStr) || (inFUrl == outputDirStr)) {
                 dits.append(ditto);
-            // }
+            }
+        }
+
+        if (dits.isEmpty()) {
+            dumpLogs(QString("Error: directory contains no file(s) to convert!"), errLogCol, LogCode::INFO);
+            resetUi();
+            progressBar->setVisible(false);
+            return;
         }
 
         const int numthr = threadSpinBox->value();

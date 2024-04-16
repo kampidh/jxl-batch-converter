@@ -41,6 +41,7 @@ private slots:
     void convertBtnPressed();
     void printHelpBtnPressed();
     void tabIndexChanged(const int &index);
+    void excludeFolderPresed();
 
     void addFilesToItemList();
     void removeSelectedFilesFromList();

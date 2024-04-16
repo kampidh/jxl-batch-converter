@@ -12,16 +12,19 @@ SOURCES += \
     conversionthread.cpp \
     main.cpp \
     mainwindow.cpp \
+    utils/folderselectiondialog.cpp \
     utils/logstats.cpp
 
 HEADERS += \
     conversionthread.h \
     logcodes.h \
     mainwindow.h \
+    utils/folderselectiondialog.h \
     utils/logstats.h
 
 FORMS += \
-    mainwindow.ui
+    mainwindow.ui \
+    utils/folderselectiondialog.ui
 
 VERSION = 0.5.0
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"

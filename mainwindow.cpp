@@ -8,6 +8,7 @@
 #include "conversionthread.h"
 #include "ui_mainwindow.h"
 #include "utils/logstats.h"
+#include "utils/folderselectiondialog.h"
 
 #include <QCloseEvent>
 #include <QDebug>
@@ -49,6 +50,7 @@ public:
     QSettings *m_currentSetting;
 
     LogStats *ls{nullptr};
+    QStringList m_excludedFolders;
 
     int m_threadCounter = 0;
     int m_multithreadNum = 1;
@@ -99,6 +101,7 @@ MainWindow::MainWindow(QWidget *parent)
     recursiveChk->setChecked(d->m_currentSetting->value("recursive", false).toBool());
     inputFileDir->setText(d->m_currentSetting->value("inDir").toString());
     inclHiddenChk->setChecked(d->m_currentSetting->value("inclHiddenChk").toBool());
+    excludeFolderBtn->setEnabled(recursiveChk->isChecked());
 
     inputTab->setCurrentIndex(d->m_currentSetting->value("inputTabIndex", 0).toInt());
     appendListsChk->setChecked(d->m_currentSetting->value("appendLists", false).toBool());
@@ -200,6 +203,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(addFilesBtn, SIGNAL(clicked(bool)), this, SLOT(addFilesToItemList()));
     connect(removeFilesBtn, SIGNAL(clicked(bool)), this, SLOT(removeSelectedFilesFromList()));
     connect(removeAllFilesBtn, SIGNAL(clicked(bool)), fileListView, SLOT(clear()));
+    connect(excludeFolderBtn, SIGNAL(clicked(bool)), this, SLOT(excludeFolderPresed()));
 
     connect(removeAllFilesBtn, &QPushButton::clicked, this, [&]() {
         fileListView->clear();
@@ -221,6 +225,11 @@ MainWindow::MainWindow(QWidget *parent)
         } else if (v == 1) {
             outputFileDir->setEnabled(true);
         }
+    });
+
+    connect(recursiveChk, &QCheckBox::stateChanged, this, [&](const int &v) {
+        Q_UNUSED(v);
+        excludeFolderBtn->setEnabled(recursiveChk->isChecked());
     });
 
     connect(aboutQtButton, &QPushButton::clicked, this, [&]() {
@@ -370,6 +379,23 @@ void MainWindow::dropEvent(QDropEvent *event)
         } else if (finfo.isDir()) {
             inputTab->setCurrentIndex(0);
             inputFileDir->setText(finfo.absoluteFilePath());
+
+            d->m_excludedFolders.erase(
+                std::remove_if(d->m_excludedFolders.begin(),
+                               d->m_excludedFolders.end(),
+                               [&](const QString &st) {
+                                   return !(st.contains(finfo.absoluteFilePath()) && st != finfo.absoluteFilePath())
+                                       // hack: in case user inputs folder that's outside the input but having the same
+                                       // (base) name eg: input, input12, input-xyz
+                                       || !(QString(st).remove(finfo.absoluteFilePath()).startsWith("/")
+                                            || QString(st).remove(finfo.absoluteFilePath()).startsWith("\\"));
+                               }),
+                d->m_excludedFolders.end());
+
+            excludeFolderBtn->setText(QString("Exclude folders...%1")
+                                          .arg(d->m_excludedFolders.isEmpty() ? QString()
+                                                                              : QString("(%1)").arg(QString::number(
+                                                                                  d->m_excludedFolders.size()))));
         }
     }
 }
@@ -444,6 +470,23 @@ void MainWindow::inputBtnPressed()
 
     if (!inFile.isEmpty()) {
         inputFileDir->setText(inFile);
+
+        d->m_excludedFolders.erase(
+            std::remove_if(d->m_excludedFolders.begin(),
+                           d->m_excludedFolders.end(),
+                           [&](const QString &st) {
+                               return !(st.contains(inFile) && st != inFile)
+                                   // hack: in case user inputs folder that's outside the input but having the same
+                                   // (base) name eg: input, input12, input-xyz
+                                   || !(QString(st).remove(inFile).startsWith("/")
+                                        || QString(st).remove(inFile).startsWith("\\"));
+                           }),
+            d->m_excludedFolders.end());
+
+        excludeFolderBtn->setText(QString("Exclude folders...%1")
+                                      .arg(d->m_excludedFolders.isEmpty() ? QString()
+                                                                          : QString("(%1)").arg(QString::number(
+                                                                              d->m_excludedFolders.size()))));
     }
 }
 
@@ -454,6 +497,24 @@ void MainWindow::outputBtnPressed()
     QFileInfo outDirs(outDir);
     if (outDirs.isDir() && outDirs.isWritable()) {
         outputFileDir->setText(outDir);
+    }
+}
+
+void MainWindow::excludeFolderPresed()
+{
+    if (!inputFileDir->text().isEmpty()) {
+        FolderSelectionDialog dial(inputFileDir->text(), d->m_excludedFolders, this);
+        dial.exec();
+
+        if (dial.result() == QDialog::Accepted) {
+            d->m_excludedFolders = dial.readLists();
+            excludeFolderBtn->setText(QString("Exclude folders...%1")
+                                          .arg(d->m_excludedFolders.isEmpty() ? QString()
+                                                                              : QString("(%1)").arg(QString::number(
+                                                                                  d->m_excludedFolders.size()))));
+        }
+    } else {
+        dumpLogs(QString("Input folder is empty"), warnLogCol, LogCode::INFO);
     }
 }
 
@@ -716,7 +777,31 @@ void MainWindow::convertBtnPressed()
             // This was (supposed to be) a safety check, but since it did it in one go,
             // there's no risk of triggering infinite recursion.
             // Scratch that, I still need it to exclude output dir if it's inside the input dir
-            if (!ditto.contains(outputDirStr) || (inFUrl == outputDirStr)) {
+
+            const bool ctnOutput = [&]() {
+                return !ditto.contains(outputDirStr)
+                    // hack: in case user inputs folder that's outside the input but having the same (base) name
+                    // eg: input, input12, input-xyz
+                    || !((QString(ditto).remove(outputDirStr).startsWith("/")
+                          || QString(ditto).remove(outputDirStr).startsWith("\\")));
+            }();
+
+            if (!d->m_excludedFolders.isEmpty()) {
+                bool skip = false;
+                foreach (const auto &fld, d->m_excludedFolders) {
+                    if ((ditto.contains(fld)
+                          && (QString(ditto).remove(fld).startsWith("/")
+                              || QString(ditto).remove(fld).startsWith("\\")))) {
+                        skip = true;
+                        break;
+                    }
+                }
+                if (skip) {
+                    continue;
+                }
+            }
+
+            if (ctnOutput || (inFUrl == outputDirStr)) {
                 dits.append(ditto);
             }
         }

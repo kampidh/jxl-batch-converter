@@ -222,6 +222,16 @@ color: rgb(255, 255, 255);</string>
                  </property>
                 </widget>
                </item>
+               <item>
+                <widget class="QPushButton" name="excludeFolderBtn">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Only works in recursive mode&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                 <property name="text">
+                  <string>Exclude folders...</string>
+                 </property>
+                </widget>
+               </item>
               </layout>
              </item>
              <item>

@@ -3,7 +3,7 @@ A simple GUI for libjxl binaries, written in C++ with Qt.
 
 *Or I could say a glorified batch command wrapped in GUI... :3*
 
-![Screnshot](simplelibjxlgui-v042.png)
+![Screnshot](simplelibjxlgui-v050.png)
 
 (new in v0.3+) Drag and drop files / folder directly!
 ![Screnshot-DragNDrop](simplelibjxlgui-v03-filelists.png)
@@ -21,6 +21,9 @@ Features:
 - Multi-threading support (v0.4.0+)
 - Copy file on encoding error (v0.4.0+)
 - Keep original date and time (v0.4.2+)
+- Delete input files after successful conversion (v0.5.0+)
+- Exclude folders while in Input folder mode (v0.5.0+)
+- Add suffix to output file (v0.5.0+)
 
 **Notes on multi-threading**:
 - While doing recursive folder processing, it can sometimes trigger a failure when the tool is creating a new folder. If you managed to get this error, just rerun the tool again (make sure to disable **Overwrite**!). Should be fixed but I'll put this warning just in case it still triggers.

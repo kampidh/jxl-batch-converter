@@ -69,6 +69,7 @@ private:
     QString m_fin;
     QString m_fout;
     QString m_extension;
+    QString m_outSuffix;
     QStringList m_args;
     QStringList m_finBatch;
     QStringList m_customArgs;

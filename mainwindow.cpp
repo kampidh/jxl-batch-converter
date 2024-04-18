@@ -20,6 +20,10 @@
 #include <QMimeData>
 #include <QScreen>
 #include <QMessageBox>
+#include <QRandomGenerator>
+
+#define RANDOM_STR_LEN 6
+#define RANDOM_STR_TRIES 100
 
 class Q_DECL_HIDDEN MainWindow::Private
 {
@@ -57,6 +61,23 @@ public:
 
     bool m_useMultithread = false;
 };
+
+QString getRandomString(const int len)
+{
+    if (len <= 0) {
+        return QString();
+    }
+    const QString charList("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
+
+    QString randomString;
+    QRandomGenerator rnds(QRandomGenerator::securelySeeded());
+    for (int i = 0; i < len; ++i) {
+        const int index = rnds.bounded(charList.length());
+        const QChar nextChar = charList.at(index);
+        randomString.append(nextChar);
+    }
+    return randomString;
+}
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -116,6 +137,10 @@ MainWindow::MainWindow(QWidget *parent)
         outputFileDir->setEnabled(!sameFolderChk->isChecked());
     }
     clearListAfterConvChk->setChecked(d->m_currentSetting->value("clearListAfterConvChk", false).toBool());
+    outSuffixChk->setChecked(d->m_currentSetting->value("outSuffixChk", false).toBool());
+    const QString outSfxLine = d->m_currentSetting->value("outSuffixLine", QString("")).toString();
+    outSuffixLine->setText(outSfxLine.left(256));
+    outSuffixLine->setEnabled(outSuffixChk->isChecked());
 
     distanceRadio->setChecked(d->m_currentSetting->value("distChecked", true).toBool());
     distanceSpinBox->setValue(d->m_currentSetting->value("distValue", 1.0).toDouble());
@@ -277,6 +302,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
     d->m_currentSetting->setValue("keepDateChkBox", keepDateChkBox->isChecked());
     d->m_currentSetting->setValue("sameFolderChk", sameFolderChk->isChecked());
     d->m_currentSetting->setValue("clearListAfterConvChk", clearListAfterConvChk->isChecked());
+    d->m_currentSetting->setValue("outSuffixChk", outSuffixChk->isChecked());
+    d->m_currentSetting->setValue("outSuffixLine", outSuffixLine->text());
 
     d->m_currentSetting->setValue("distChecked", distanceRadio->isChecked());
     d->m_currentSetting->setValue("distValue", distanceSpinBox->value());
@@ -558,6 +585,7 @@ void MainWindow::convertBtnPressed()
     d->m_eTimer.start();
 
     QMap<QString, QString> encOptions;
+    QString outFmt(".jxl");
 
     const int selectedTabIndex = selectionTabWdg->currentIndex();
 
@@ -612,6 +640,7 @@ void MainWindow::convertBtnPressed()
         //
         encOptions.insert("outFormat", outFmtCombo->currentText());
         encOptions.insert("customFlags", custOutFlagTxt->toPlainText());
+        outFmt = outFmtCombo->currentText();
         break;
     case 2:
         //
@@ -631,12 +660,14 @@ void MainWindow::convertBtnPressed()
         }
 
         encOptions.insert("outFormat", ".jpg");
+        outFmt = ".jpg";
         break;
     case 3:
         //
         // djpegli
         //
         encOptions.insert("outFormat", outJpegliFmtCombo->currentText());
+        outFmt = outJpegliFmtCombo->currentText();
         encOptions.insert("customFlags", custJpegliOutFlagTxt->toPlainText());
         break;
     default:
@@ -654,6 +685,18 @@ void MainWindow::convertBtnPressed()
     encOptions.insert("globalCopyOnError", (copyOnErrorchk->isChecked() ? "1" : "0"));
     encOptions.insert("useMultithread", ((threadSpinBox->value() > 1) ? "1" : "0"));
     encOptions.insert("keepDateTime", (keepDateChkBox->isChecked() ? "1" : "0"));
+    QString randomSuffix;
+    if (outSuffixChk->isChecked() && !outSuffixLine->text().isEmpty()) {
+        QString outSfx = outSuffixLine->text();
+        if (outSfx.contains("%rnd%")) {
+            while (outSfx.count("%rnd%") > 1) {
+                outSfx.remove(outSfx.indexOf("%rnd%", outSfx.indexOf("%rnd%") + 1), 5);
+            }
+            outSuffixLine->setText(outSfx);
+            randomSuffix = getRandomString(RANDOM_STR_LEN);
+        }
+        // encOptions.insert("outSuffix", outSfx);
+    }
 
     const QString outputDirStr = [&](){
         if (sameFolderChk->isChecked() && inputTab->currentIndex() == 0) {
@@ -813,6 +856,55 @@ void MainWindow::convertBtnPressed()
             return;
         }
 
+        // suffix addition
+        if (!randomSuffix.isEmpty()) {
+            QString osf = outSuffixLine->text();
+            QFileInfo inFileFirstTmp(dits.at(0));
+
+            QDir inUrlTmp;
+            if (inFileFirstTmp.isFile()) {
+                inUrlTmp.setPath(inFileFirstTmp.absolutePath());
+            } else {
+                inUrlTmp.setPath(inFileFirstTmp.absoluteFilePath());
+            }
+
+            const QString basePathTmp = inUrlTmp.absolutePath();
+
+            const QFileInfo inFileTmp(dits.at(0));
+            const QString foutTmp = outputDirStr;
+            const QString extraDirNameTmp = QString(inFileTmp.absolutePath()).remove(basePathTmp);
+            // without list
+            const QDir outFUrlTmp = QDir::cleanPath(foutTmp + extraDirNameTmp);
+
+            QString outFNameTmp = inFileTmp.completeBaseName()
+                + (osf.isEmpty() ? QString() : QString("-%1").arg(QString(osf.replace("%rnd%", randomSuffix)))) + outFmt;
+            QString outFPathTmp = QDir::cleanPath(outFUrlTmp.path() + QDir::separator() + outFNameTmp);
+            QFileInfo outFileTmp(outFPathTmp);
+
+            // dear me, I hope no one ever reached 56,800,235,584 random suffixes
+            // that may cause (near) an infinite loop here...
+            quint64 numTries = 0;
+            while (outFileTmp.exists()) {
+                // let's limit the tries considerably
+                if (numTries > RANDOM_STR_TRIES) {
+                    break;
+                }
+                numTries++;
+                randomSuffix = getRandomString(RANDOM_STR_LEN);
+                QString osfTmp = outSuffixLine->text();
+                outFNameTmp = inFileTmp.completeBaseName()
+                    + (osf.isEmpty() ? QString() : QString("-%1").arg(QString(osfTmp.replace("%rnd%", randomSuffix)))) + outFmt;
+                outFPathTmp = QDir::cleanPath(outFUrlTmp.path() + QDir::separator() + outFNameTmp);
+                outFileTmp.setFile(outFPathTmp);
+            }
+
+            QString osff = outSuffixLine->text();
+            osff.replace("%rnd%", randomSuffix);
+            encOptions.insert("outSuffix", osff);
+        } else if (!outSuffixLine->text().isEmpty()) {
+            encOptions.insert("outSuffix", outSuffixLine->text());
+        }
+
         const int numthr = threadSpinBox->value();
         const int bucketSize = dits.size() / numthr;
         QList<QStringList> ditlist;
@@ -858,6 +950,55 @@ void MainWindow::convertBtnPressed()
         QStringList dit;
         for (int i = 0; i < fileListView->count(); i++) {
             dit << fileListView->item(i)->text();
+        }
+
+        // suffix addition
+        if (!randomSuffix.isEmpty()) {
+            QString osf = outSuffixLine->text();
+            QFileInfo inFileFirstTmp(dit.at(0));
+
+            QDir inUrlTmp;
+            if (inFileFirstTmp.isFile()) {
+                inUrlTmp.setPath(inFileFirstTmp.absolutePath());
+            } else {
+                inUrlTmp.setPath(inFileFirstTmp.absoluteFilePath());
+            }
+
+            const QString basePathTmp = inUrlTmp.absolutePath();
+
+            const QFileInfo inFileTmp(dit.at(0));
+            const QString foutTmp = outputDirStr;
+            const QString extraDirNameTmp = QString(inFileTmp.absolutePath()).remove(basePathTmp);
+            // with list
+            const QDir outFUrlTmp = QDir::cleanPath(foutTmp + extraDirNameTmp);
+
+            QString outFNameTmp = inFileTmp.completeBaseName()
+                + (osf.isEmpty() ? QString() : QString("-%1").arg(QString(osf.replace("%rnd%", randomSuffix)))) + outFmt;
+            QString outFPathTmp = QDir::cleanPath(outFUrlTmp.path() + QDir::separator() + outFNameTmp);
+            QFileInfo outFileTmp(outFPathTmp);
+
+            // dear me, I hope no one ever reached 56,800,235,584 random suffixes
+            // that may cause (near) an infinite loop here...
+            quint64 numTries = 0;
+            while (outFileTmp.exists()) {
+                // let's limit the tries considerably
+                if (numTries > RANDOM_STR_TRIES) {
+                    break;
+                }
+                numTries++;
+                randomSuffix = getRandomString(RANDOM_STR_LEN);
+                QString osfTmp = outSuffixLine->text();
+                outFNameTmp = inFileTmp.completeBaseName()
+                    + (osf.isEmpty() ? QString() : QString("-%1").arg(QString(osfTmp.replace("%rnd%", randomSuffix)))) + outFmt;
+                outFPathTmp = QDir::cleanPath(outFUrlTmp.path() + QDir::separator() + outFNameTmp);
+                outFileTmp.setFile(outFPathTmp);
+            }
+
+            QString osff = outSuffixLine->text();
+            osff.replace("%rnd%", randomSuffix);
+            encOptions.insert("outSuffix", osff);
+        } else if (!outSuffixLine->text().isEmpty()) {
+            encOptions.insert("outSuffix", outSuffixLine->text());
         }
 
         const int numthr = threadSpinBox->value();

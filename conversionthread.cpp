@@ -79,6 +79,10 @@ void ConversionThread::initArgs(const QMap<QString, QString> &args)
             m_keepDateTime = true;
         }
 
+        if (mit.key() == "outSuffix") {
+            m_outSuffix = mit.value();
+        }
+
         if (mit.key() == "customFlags") {
             if (mit.value().contains("disable_output")) {
                 m_disableOutput = true;
@@ -283,7 +287,8 @@ void ConversionThread::run()
             }
         }
 
-        const QString outFName = inFile.completeBaseName() + m_extension;
+        const QString outFName = inFile.completeBaseName()
+            + (m_outSuffix.isEmpty() ? QString() : QString("-%1").arg(m_outSuffix)) + m_extension;
         const QString outFPath = QDir::cleanPath(outFUrl.path() + QDir::separator() + outFName);
 
         const QFileInfo outFile(outFPath);

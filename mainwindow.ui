@@ -436,6 +436,30 @@ color: rgb(255, 255, 255);</string>
              </layout>
             </item>
             <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_12">
+              <property name="topMargin">
+               <number>1</number>
+              </property>
+              <item>
+               <widget class="QCheckBox" name="outSuffixChk">
+                <property name="text">
+                 <string>Output file suffix:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="outSuffixLine">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add suffix to the output file:&lt;br&gt;{base file name}-{suffix}.{extension}&lt;/p&gt;&lt;p&gt;Extra options:&lt;br&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;%rnd%&lt;/span&gt; - Generates random 6 alphanumeric string&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="maxLength">
+                 <number>256</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
              <layout class="QHBoxLayout" name="horizontalLayout_6">
               <item>
                <widget class="QCheckBox" name="overwriteChkBox">
@@ -1525,6 +1549,22 @@ Press &quot;Print help&quot; to see available flags.</string>
     <hint type="destinationlabel">
      <x>763</x>
      <y>101</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>outSuffixChk</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>outSuffixLine</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>69</x>
+     <y>825</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>323</x>
+     <y>825</y>
     </hint>
    </hints>
   </connection>

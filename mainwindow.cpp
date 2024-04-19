@@ -901,7 +901,7 @@ void MainWindow::convertBtnPressed()
             QString osff = outSuffixLine->text();
             osff.replace("%rnd%", randomSuffix);
             encOptions.insert("outSuffix", osff);
-        } else if (!outSuffixLine->text().isEmpty()) {
+        } else if (!outSuffixLine->text().isEmpty() && outSuffixChk->isChecked()) {
             encOptions.insert("outSuffix", outSuffixLine->text());
         }
 
@@ -997,7 +997,7 @@ void MainWindow::convertBtnPressed()
             QString osff = outSuffixLine->text();
             osff.replace("%rnd%", randomSuffix);
             encOptions.insert("outSuffix", osff);
-        } else if (!outSuffixLine->text().isEmpty()) {
+        } else if (!outSuffixLine->text().isEmpty() && outSuffixChk->isChecked()) {
             encOptions.insert("outSuffix", outSuffixLine->text());
         }
 

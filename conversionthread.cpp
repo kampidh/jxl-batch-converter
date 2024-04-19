@@ -205,6 +205,7 @@ void ConversionThread::resetValues()
     m_keepDateTime = false;
 
     m_customArgs.clear();
+    m_outSuffix.clear();
 
     m_averageMps = 0.0;
     m_mpsSamples = 0;

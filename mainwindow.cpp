@@ -22,7 +22,7 @@
 #include <QMessageBox>
 #include <QRandomGenerator>
 
-#define RANDOM_STR_LEN 6
+#define RANDOM_STR_LEN 4
 #define RANDOM_STR_TRIES 100
 
 class Q_DECL_HIDDEN MainWindow::Private

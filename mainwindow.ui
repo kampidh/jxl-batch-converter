@@ -442,6 +442,9 @@ color: rgb(255, 255, 255);</string>
               </property>
               <item>
                <widget class="QCheckBox" name="outSuffixChk">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add suffix to the output file:&lt;br/&gt;{base file name}{suffix}.{extension}&lt;/p&gt;&lt;p&gt;Extra options:&lt;br/&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;%rnd%&lt;/span&gt; - Generates random 6 alphanumeric string per batch&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
                 <property name="text">
                  <string>Output file suffix:</string>
                 </property>
@@ -450,7 +453,7 @@ color: rgb(255, 255, 255);</string>
               <item>
                <widget class="QLineEdit" name="outSuffixLine">
                 <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add suffix to the output file:&lt;br&gt;{base file name}-{suffix}.{extension}&lt;/p&gt;&lt;p&gt;Extra options:&lt;br&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;%rnd%&lt;/span&gt; - Generates random 6 alphanumeric string&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add suffix to the output file:&lt;br/&gt;{base file name}{suffix}.{extension}&lt;/p&gt;&lt;p&gt;Extra options:&lt;br/&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;%rnd%&lt;/span&gt; - Generates random 6 alphanumeric string per batch&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                 <property name="maxLength">
                  <number>256</number>

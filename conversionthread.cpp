@@ -289,7 +289,7 @@ void ConversionThread::run()
         }
 
         const QString outFName = inFile.completeBaseName()
-            + (m_outSuffix.isEmpty() ? QString() : QString("-%1").arg(m_outSuffix)) + m_extension;
+            + (m_outSuffix.isEmpty() ? QString() : QString("%1").arg(m_outSuffix)) + m_extension;
         const QString outFPath = QDir::cleanPath(outFUrl.path() + QDir::separator() + outFName);
 
         const QFileInfo outFile(outFPath);

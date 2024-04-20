@@ -3,7 +3,7 @@ A simple GUI for libjxl binaries, written in C++ with Qt.
 
 *Or I could say a glorified batch command wrapped in GUI... :3*
 
-![Screnshot](simplelibjxlgui-v050.png)
+![Screnshot](simplelibjxlgui-v051.png)
 
 (new in v0.3+) Drag and drop files / folder directly!
 ![Screnshot-DragNDrop](simplelibjxlgui-v03-filelists.png)

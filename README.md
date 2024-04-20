@@ -23,7 +23,9 @@ Features:
 - Keep original date and time (v0.4.2+)
 - Delete input files after successful conversion (v0.5.0+)
 - Exclude folders while in Input folder mode (v0.5.0+)
-- Add suffix to output file (v0.5.0+)
+- Add suffix to output file (v0.5.0+) with some extra options:
+  - Use `%rnd%` to generate 4 alphanumeric random string that's unique per conversion batch
+  - Use `%hash%` to generate 6 alphanumeric simple hash string that's unique per encoding parameters and save the parameters into `.txt` file in the output folder, this can be useful for tracking the parameters used for the specific hash (v0.5.2+)
 
 **Notes on multi-threading**:
 - While doing recursive folder processing, it can sometimes trigger a failure when the tool is creating a new folder. If you managed to get this error, just rerun the tool again (make sure to disable **Overwrite**!). Should be fixed but I'll put this warning just in case it still triggers.

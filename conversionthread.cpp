@@ -79,6 +79,10 @@ void ConversionThread::initArgs(const QMap<QString, QString> &args)
             m_keepDateTime = true;
         }
 
+        if (mit.key() == "processNonAscii" && mit.value() == "1") {
+            m_processNonAscii = true;
+        }
+
         if (mit.key() == "outSuffix") {
             m_outSuffix = mit.value();
         }
@@ -203,6 +207,7 @@ void ConversionThread::resetValues()
     m_haveCustomArgs = false;
     m_isMultithread = false;
     m_keepDateTime = false;
+    m_processNonAscii = false;
 
     m_customArgs.clear();
     m_outSuffix.clear();
@@ -344,7 +349,52 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
 {
     QStringList arg;
 
-    arg << fin.absoluteFilePath() << fout;
+    const QString realFname = fin.baseName();
+    bool notAscii = false;
+
+// TODO: keep track when libjxl finally fixes non-ascii filenames...
+// This is just a temporary, hacky solution for windows
+#ifdef Q_OS_WIN
+    if (m_processNonAscii) {
+        foreach (const auto &ch, realFname) {
+            if (ch.toLatin1() == 0) {
+                notAscii = true;
+            }
+        }
+    }
+#endif
+
+    const QString asciiFname = [&]() {
+        if (notAscii) {
+            return QString(realFname.toUtf8().toHex());
+        }
+        return realFname;
+    }();
+    const QString inputAscii = [&](){
+        if (notAscii) {
+            return fin.absoluteFilePath().replace(realFname, asciiFname);
+        }
+        return fin.absoluteFilePath();
+    }();
+    const QString outputAscii = [&](){
+        if (notAscii) {
+            QString ffout = fout;
+            return ffout.replace(realFname, asciiFname);
+        }
+        return fout;
+    }();
+
+    if (notAscii) {
+        // Dirty hack: rename non-ascii input files
+        // make sure to check if renaming is success before proceeding
+        notAscii = QFile::rename(fin.absoluteFilePath(), inputAscii);
+    }
+
+    if (notAscii) {
+        arg << inputAscii << outputAscii;
+    } else {
+        arg << fin.absoluteFilePath() << fout;
+    }
 
     const bool isJpeg = [&]() {
         if (fin.suffix().contains("jpg", Qt::CaseInsensitive) || fin.suffix().contains("jpeg", Qt::CaseInsensitive)
@@ -404,6 +454,14 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
             }
         }
     } while (!cjxlBin.waitForFinished(POLL_RATE_MS));
+
+    if (notAscii) {
+        // Dirty hack: ...and rename it back after conversion
+        QFile::rename(inputAscii, fin.absoluteFilePath());
+        if (QFile::exists(outputAscii)) {
+            QFile::rename(outputAscii, fout);
+        }
+    }
 
     const bool haveErrors = (cjxlBin.exitCode() != 0);
 

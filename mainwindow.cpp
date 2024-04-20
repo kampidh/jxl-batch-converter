@@ -123,6 +123,12 @@ MainWindow::MainWindow(QWidget *parent)
         new QSettings(QDir::cleanPath(QDir::homePath() + QDir::separator() + "jxl-batch-converter-config.ini"),
                       QSettings::IniFormat);
 
+    processNonAsciiChk->setVisible(false);
+#ifdef Q_OS_WIN
+    processNonAsciiChk->setVisible(true);
+    processNonAsciiChk->setEnabled(true);
+#endif
+
     libjxlBinDir->setText(d->m_currentSetting->value("execBinDir").toString());
     recursiveChk->setChecked(d->m_currentSetting->value("recursive", false).toBool());
     inputFileDir->setText(d->m_currentSetting->value("inDir").toString());
@@ -693,6 +699,10 @@ void MainWindow::convertBtnPressed()
     }
     const QString encodeHash = getRandomString(6, qHash(opts));
 
+// Dirty hack for windows
+#ifdef Q_OS_WIN
+    encOptions.insert("processNonAscii", (processNonAsciiChk->isChecked() ? "1" : "0"));
+#endif
     encOptions.insert("overwrite", (overwriteChkBox->isChecked() ? "1" : "0"));
     encOptions.insert("silent", (silenceChkBox->isChecked() ? "1" : "0"));
     encOptions.insert("globalTimeout", QString::number(glbTimeoutSpinBox->value()));

@@ -57,6 +57,7 @@ private:
     bool m_useFileList = false;
     bool m_isMultithread = false;
     bool m_keepDateTime = false;
+    bool m_processNonAscii = false;
 
     double m_averageMps = 0.0;
     int m_mpsSamples = 0;

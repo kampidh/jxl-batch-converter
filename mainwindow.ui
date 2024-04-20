@@ -1287,6 +1287,16 @@ Press &quot;Print help&quot; to see available flags.</string>
           </layout>
          </item>
          <item>
+          <widget class="QCheckBox" name="processNonAsciiChk">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="text">
+            <string>(Windows) Process non-ASCII filenames</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QGroupBox" name="deleteInputAfterConvChk">
            <property name="title">
             <string>Delete input files after successful conversion</string>

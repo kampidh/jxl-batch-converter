@@ -62,7 +62,7 @@ public:
     bool m_useMultithread = false;
 };
 
-QString getRandomString(const int len)
+QString getRandomString(const int len, const uint seed = 0)
 {
     if (len <= 0) {
         return QString();
@@ -70,7 +70,12 @@ QString getRandomString(const int len)
     const QString charList("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
 
     QString randomString;
-    QRandomGenerator rnds(QRandomGenerator::securelySeeded());
+    QRandomGenerator rnds;
+    if (seed > 0) {
+        rnds.seed(seed);
+    } else {
+        rnds.seed(QRandomGenerator::securelySeeded().generate());
+    }
     for (int i = 0; i < len; ++i) {
         const int index = rnds.bounded(charList.length());
         const QChar nextChar = charList.at(index);
@@ -141,6 +146,7 @@ MainWindow::MainWindow(QWidget *parent)
     const QString outSfxLine = d->m_currentSetting->value("outSuffixLine", QString("")).toString();
     outSuffixLine->setText(outSfxLine.left(256));
     outSuffixLine->setEnabled(outSuffixChk->isChecked());
+    outSuffixChk->setToolTip(outSuffixLine->toolTip());
 
     distanceRadio->setChecked(d->m_currentSetting->value("distChecked", true).toBool());
     distanceSpinBox->setValue(d->m_currentSetting->value("distValue", 1.0).toDouble());
@@ -678,6 +684,15 @@ void MainWindow::convertBtnPressed()
         break;
     }
 
+    QString opts;
+    foreach (const auto &ky, encOptions.keys()) {
+        opts.append(ky);
+        opts.append(" ");
+        opts.append(encOptions.value(ky));
+        opts.append("\n");
+    }
+    const QString encodeHash = getRandomString(6, qHash(opts));
+
     encOptions.insert("overwrite", (overwriteChkBox->isChecked() ? "1" : "0"));
     encOptions.insert("silent", (silenceChkBox->isChecked() ? "1" : "0"));
     encOptions.insert("globalTimeout", QString::number(glbTimeoutSpinBox->value()));
@@ -694,6 +709,11 @@ void MainWindow::convertBtnPressed()
             }
             outSuffixLine->setText(outSfx);
             randomSuffix = getRandomString(RANDOM_STR_LEN);
+        }
+        if (outSfx.contains("%hash%")) {
+            while (outSfx.count("%hash%") > 1) {
+                outSfx.remove(outSfx.indexOf("%hash%", outSfx.indexOf("%hash%") + 1), 5);
+            }
         }
         // encOptions.insert("outSuffix", outSfx);
     }
@@ -857,6 +877,7 @@ void MainWindow::convertBtnPressed()
         }
 
         // suffix addition
+        bool useHash = false;
         if (!randomSuffix.isEmpty()) {
             QString osf = outSuffixLine->text();
             QFileInfo inFileFirstTmp(dits.at(0));
@@ -900,9 +921,26 @@ void MainWindow::convertBtnPressed()
 
             QString osff = outSuffixLine->text();
             osff.replace("%rnd%", randomSuffix);
+            if (osff.contains("%hash%")) {
+                useHash = true;
+                osff.replace("%hash%", encodeHash);
+            }
             encOptions.insert("outSuffix", osff);
         } else if (!outSuffixLine->text().isEmpty() && outSuffixChk->isChecked()) {
-            encOptions.insert("outSuffix", outSuffixLine->text());
+            QString osff = outSuffixLine->text();
+            if (osff.contains("%hash%")) {
+                useHash = true;
+                osff.replace("%hash%", encodeHash);
+            }
+            encOptions.insert("outSuffix", osff);
+        }
+
+        if (useHash) {
+            QFile hashOpts;
+            hashOpts.setFileName(QDir::cleanPath(outputDirStr + QDir::separator() + QString("encode-opts-%1.txt").arg(encodeHash)));
+            hashOpts.open(QIODevice::WriteOnly);
+            hashOpts.write(opts.toUtf8());
+            hashOpts.close();
         }
 
         const int numthr = threadSpinBox->value();
@@ -953,6 +991,7 @@ void MainWindow::convertBtnPressed()
         }
 
         // suffix addition
+        bool useHash = false;
         if (!randomSuffix.isEmpty()) {
             QString osf = outSuffixLine->text();
             QFileInfo inFileFirstTmp(dit.at(0));
@@ -996,9 +1035,26 @@ void MainWindow::convertBtnPressed()
 
             QString osff = outSuffixLine->text();
             osff.replace("%rnd%", randomSuffix);
+            if (osff.contains("%hash%")) {
+                useHash = true;
+                osff.replace("%hash%", encodeHash);
+            }
             encOptions.insert("outSuffix", osff);
         } else if (!outSuffixLine->text().isEmpty() && outSuffixChk->isChecked()) {
-            encOptions.insert("outSuffix", outSuffixLine->text());
+            QString osff = outSuffixLine->text();
+            if (osff.contains("%hash%")) {
+                useHash = true;
+                osff.replace("%hash%", encodeHash);
+            }
+            encOptions.insert("outSuffix", osff);
+        }
+
+        if (useHash) {
+            QFile hashOpts;
+            hashOpts.setFileName(QDir::cleanPath(outputDirStr + QDir::separator() + QString("encode-opts-%1.txt").arg(encodeHash)));
+            hashOpts.open(QIODevice::WriteOnly);
+            hashOpts.write(opts.toUtf8());
+            hashOpts.close();
         }
 
         const int numthr = threadSpinBox->value();

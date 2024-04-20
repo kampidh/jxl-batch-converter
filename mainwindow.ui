@@ -453,7 +453,7 @@ color: rgb(255, 255, 255);</string>
               <item>
                <widget class="QLineEdit" name="outSuffixLine">
                 <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add suffix to the output file:&lt;br/&gt;{base file name}{suffix}.{extension}&lt;/p&gt;&lt;p&gt;Extra options:&lt;br/&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;%rnd%&lt;/span&gt; - Generates random 4 alphanumeric string per batch&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add suffix to the output file:&lt;br/&gt;{base file name}{suffix}.{extension}&lt;/p&gt;&lt;p&gt;Extra options:&lt;br/&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;%rnd%&lt;/span&gt; - Generates random 4 alphanumeric string per batch&lt;br/&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;%hash%&lt;/span&gt; - Generates 6 alphanumeric string unique hash per encoding parameters, also saves the parameters into .txt file in the output folder&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                 <property name="maxLength">
                  <number>256</number>

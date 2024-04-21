@@ -1235,7 +1235,7 @@ void MainWindow::resetUi()
                 }
             }
         }
-        if (d->ls->readTotalOutputBytes() > 0) {
+        if (d->ls->readTotalOutputBytes() > 0 && d->ls->countFiles(LogCode::OK) > 0) {
             const quint64 tInput = d->ls->readTotalInputBytes();
             const quint64 tOutput = d->ls->readTotalOutputBytes();
             const double aMpps = d->ls->readAverageMpps();

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>906</width>
-    <height>910</height>
+    <height>940</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -1290,6 +1290,9 @@ Press &quot;Print help&quot; to see available flags.</string>
           <widget class="QCheckBox" name="processNonAsciiChk">
            <property name="enabled">
             <bool>false</bool>
+           </property>
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This option will attempt to rename non-ASCII files before conversion as a workaround for libjxl bug.&lt;/p&gt;&lt;p&gt;Limitation note: this &lt;span style=&quot; font-weight:600;&quot;&gt;*only*&lt;/span&gt; rename files, not folders. And non-ASCII folder names will may still get skipped (fails to encode).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="text">
             <string>(Windows) Process non-ASCII filenames</string>

@@ -211,6 +211,9 @@ void ConversionThread::resetValues()
 
     m_customArgs.clear();
     m_outSuffix.clear();
+    m_tempFolderName.clear();
+    m_tempFolderIn.clear();
+    m_tempFolderOut.clear();
 
     m_averageMps = 0.0;
     m_mpsSamples = 0;
@@ -244,6 +247,29 @@ void ConversionThread::run()
     }
 
     const QString basePath = inUrl.absolutePath();
+
+    if (m_processNonAscii) {
+        if (!QDir("./jxl-batch-temp").exists()) {
+            QDir(".").mkpath("./jxl-batch-temp");
+        }
+        if (!QDir("./jxl-batch-temp/input").exists()) {
+            QDir("./jxl-batch-temp").mkpath("input");
+        }
+        if (!QDir("./jxl-batch-temp/output").exists()) {
+            QDir("./jxl-batch-temp/").mkpath("output");
+        }
+
+        if (sizeof(currentThreadId()) == 8) {
+            // oh no, unsafe stuffs
+            m_tempFolderName = QString::number(reinterpret_cast<uint64_t>(currentThreadId()));
+            if (QDir("./jxl-batch-temp/input").mkpath(m_tempFolderName)) {
+                m_tempFolderIn = QString("./jxl-batch-temp/input/%1").arg(m_tempFolderName);
+            }
+            if (QDir("./jxl-batch-temp/output").mkpath(m_tempFolderName)) {
+                m_tempFolderOut = QString("./jxl-batch-temp/output/%1").arg(m_tempFolderName);
+            }
+        }
+    }
 
     // emit sendProgress(0);
 
@@ -349,13 +375,17 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
 {
     QStringList arg;
 
-    const QString realFname = fin.baseName();
-    const QString fealFoutName = QFileInfo(fout).baseName();
+    const QString realFname = fin.completeBaseName();
+    const QString fealFoutName = QFileInfo(fout).completeBaseName();
     bool notAscii = false;
     bool outNotAscii = false;
+    bool inDirNotAscii = false;
+    bool outDirNotAscii = false;
 
 // TODO: keep track when libjxl finally fixes non-ascii filenames...
 // This is just a temporary, hacky solution for windows
+// In general: if it's only the file that's having non-ASCII characters, the file will get renamed,
+// but if the folders also have them, do a temporary copy.
 #ifdef Q_OS_WIN
     if (m_processNonAscii) {
         foreach (const auto &ch, realFname) {
@@ -368,26 +398,72 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
                 outNotAscii = true;
             }
         }
+        foreach (const auto &ch, fin.absolutePath()) {
+            if (ch.toLatin1() == 0) {
+                inDirNotAscii = true;
+            }
+        }
+        foreach (const auto &ch, QFileInfo(fout).absolutePath()) {
+            if (ch.toLatin1() == 0) {
+                outDirNotAscii = true;
+            }
+        }
+        if (m_tempFolderIn.isEmpty() || m_tempFolderOut.isEmpty()) {
+            // bail if temp folders did not exist
+            notAscii = false;
+            outNotAscii = false;
+            inDirNotAscii = false;
+            outDirNotAscii = false;
+        }
     }
 #endif
 
     const QString asciiFname = [&]() {
         if (notAscii) {
-            return QString(realFname.toUtf8().toHex());
+            return QString(realFname.toUtf8().toBase64(QByteArray::Base64UrlEncoding));
         }
         return realFname;
     }();
     const QString inputAscii = [&](){
-        if (notAscii) {
+        if (notAscii || inDirNotAscii) {
+            if (inDirNotAscii) {
+                QFile::copy(fin.absoluteFilePath(),
+                            QString("%1/%2").arg(m_tempFolderIn,
+                                                 notAscii ? fin.fileName().replace(realFname, asciiFname)
+                                                          : fin.fileName()));
+                return QFileInfo(QString("%1/%2").arg(m_tempFolderIn,
+                                                      notAscii ? fin.fileName().replace(realFname, asciiFname)
+                                                               : fin.fileName()))
+                    .absoluteFilePath();
+            }
             return fin.absoluteFilePath().replace(realFname, asciiFname);
         }
         return fin.absoluteFilePath();
     }();
+    // sweet nexus, my head...
     const QString outputAscii = [&](){
-        if (notAscii || outNotAscii) {
-            const QFileInfo fffout(fout);
+        if (notAscii || outNotAscii || outDirNotAscii) {
+            QFileInfo fffout(fout);
             QString ffout = fout;
-            return ffout.replace(fffout.baseName(), QString(fffout.baseName().toUtf8().toHex()));
+            if (notAscii || outNotAscii) {
+                ffout.replace(fffout.completeBaseName(), QString(fffout.completeBaseName().toUtf8().toBase64(QByteArray::Base64UrlEncoding)));
+                fffout.setFile(ffout);
+            }
+            if (outDirNotAscii) {
+                QFileInfo offf(QString("%1/%2").arg(m_tempFolderOut, fffout.fileName()));
+                if (offf.exists()) {
+                    quint64 increments = 0;
+                    // just a safety measure, in general this will never cause a duplication since
+                    // the file is banished right after the conversion, no matter the results are.
+                    while (offf.exists()) {
+                        const QString inctd = offf.completeBaseName() + QString::number(increments);
+                        offf.setFile(offf.absoluteFilePath().replace(offf.completeBaseName(), inctd));
+                        increments++;
+                    }
+                }
+                return offf.absoluteFilePath();
+            }
+            return ffout;
         }
         return fout;
     }();
@@ -395,10 +471,12 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
     if (notAscii) {
         // Dirty hack: rename non-ascii input files
         // make sure to check if renaming is success before proceeding
-        notAscii = QFile::rename(fin.absoluteFilePath(), inputAscii);
+        if (!inDirNotAscii) {
+            notAscii = QFile::rename(fin.absoluteFilePath(), inputAscii);
+        }
     }
 
-    if (notAscii) {
+    if (notAscii || inDirNotAscii || outDirNotAscii) {
         arg << inputAscii << outputAscii;
     } else {
         if (outNotAscii) {
@@ -467,13 +545,23 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
         }
     } while (!cjxlBin.waitForFinished(POLL_RATE_MS));
 
-    if (notAscii || outNotAscii) {
+    if (notAscii || outNotAscii || inDirNotAscii || outDirNotAscii) {
         // Dirty hack: ...and rename it back after conversion
-        if (notAscii) {
+        if (notAscii && !inDirNotAscii) {
             QFile::rename(inputAscii, fin.absoluteFilePath());
         }
-        if (QFile::exists(outputAscii)) {
+        if ((QFile::exists(outputAscii) || QFile::exists(fout)) && !outDirNotAscii) {
+            if (QFile::exists(fout)) {
+                QFile::remove(fout);
+            }
             QFile::rename(outputAscii, fout);
+        }
+        if ((inDirNotAscii || outDirNotAscii) && QFile::exists(outputAscii)) {
+            QFile::copy(outputAscii, fout);
+            QFile::remove(outputAscii);
+            if (notAscii) {
+                QFile::remove(inputAscii);
+            }
         }
     }
 
@@ -611,6 +699,17 @@ void ConversionThread::calculateStats()
 {
     if (!m_ls) {
         return;
+    }
+    // temp folder cleanup
+    if (m_processNonAscii) {
+        QDir inDir(m_tempFolderIn);
+        QDir outDir(m_tempFolderOut);
+        if (inDir.exists()) {
+            inDir.removeRecursively();
+        }
+        if (outDir.exists()) {
+            outDir.removeRecursively();
+        }
     }
     if (m_averageMps > 0.0) {
         const double avg = m_averageMps / static_cast<double>(m_mpsSamples);

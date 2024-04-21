@@ -71,6 +71,9 @@ private:
     QString m_fout;
     QString m_extension;
     QString m_outSuffix;
+    QString m_tempFolderName;
+    QString m_tempFolderIn;
+    QString m_tempFolderOut;
     QStringList m_args;
     QStringList m_finBatch;
     QStringList m_customArgs;

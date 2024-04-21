@@ -124,6 +124,7 @@ MainWindow::MainWindow(QWidget *parent)
                       QSettings::IniFormat);
 
     processNonAsciiChk->setVisible(false);
+    processNonAsciiChk->setChecked(false);
 #ifdef Q_OS_WIN
     processNonAsciiChk->setVisible(true);
     processNonAsciiChk->setEnabled(true);
@@ -205,6 +206,9 @@ MainWindow::MainWindow(QWidget *parent)
     deleteInputAfterConvChk->setChecked(d->m_currentSetting->value("deleteInputAfterConvChk").toBool());
     deleteInputPermaChk->setChecked(d->m_currentSetting->value("deleteInputPermaChk").toBool());
     alsoDeleteSkipChk->setChecked(d->m_currentSetting->value("alsoDeleteSkipChk").toBool());
+#ifdef Q_OS_WIN
+    processNonAsciiChk->setChecked(d->m_currentSetting->value("processNonAsciiChk").toBool());
+#endif
 
     logText->document()->setMaximumBlockCount(maxLinesSpinBox->value());
 
@@ -358,6 +362,9 @@ void MainWindow::closeEvent(QCloseEvent *event)
     d->m_currentSetting->setValue("deleteInputAfterConvChk", deleteInputAfterConvChk->isChecked());
     d->m_currentSetting->setValue("deleteInputPermaChk", deleteInputPermaChk->isChecked());
     d->m_currentSetting->setValue("alsoDeleteSkipChk", alsoDeleteSkipChk->isChecked());
+#ifdef Q_OS_WIN
+    d->m_currentSetting->setValue("processNonAsciiChk", processNonAsciiChk->isChecked());
+#endif
 
     event->accept();
 }
@@ -1215,6 +1222,10 @@ void MainWindow::resetUi()
     d->m_threadCounter = 0;
 
     logText->document()->setMaximumBlockCount(0);
+    // cleanup temp folders
+    if (QDir("./jxl-batch-temp").exists()) {
+        QDir("./jxl-batch-temp").removeRecursively();
+    }
 
     quint64 deletedFilesNum = 0;
     bool isAborted = false;

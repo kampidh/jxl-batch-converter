@@ -557,6 +557,9 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
             QFile::rename(outputAscii, fout);
         }
         if ((inDirNotAscii || outDirNotAscii) && QFile::exists(outputAscii)) {
+            if (QFile::exists(fout)) {
+                QFile::remove(fout);
+            }
             QFile::copy(outputAscii, fout);
             QFile::remove(outputAscii);
             if (notAscii) {

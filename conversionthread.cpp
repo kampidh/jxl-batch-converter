@@ -453,11 +453,12 @@ bool ConversionThread::runCjxl(QProcess &cjxlBin, const QFileInfo &fin, const QS
                 QFileInfo offf(QString("%1/%2").arg(m_tempFolderOut, fffout.fileName()));
                 if (offf.exists()) {
                     quint64 increments = 0;
+                    const QString cbsn = offf.completeBaseName();
                     // just a safety measure, in general this will never cause a duplication since
                     // the file is banished right after the conversion, no matter the results are.
                     while (offf.exists()) {
-                        const QString inctd = offf.completeBaseName() + QString::number(increments);
-                        offf.setFile(offf.absoluteFilePath().replace(offf.completeBaseName(), inctd));
+                        const QString inctd = cbsn + QString::number(increments);
+                        offf.setFile(offf.absoluteFilePath().replace(cbsn, inctd));
                         increments++;
                     }
                 }

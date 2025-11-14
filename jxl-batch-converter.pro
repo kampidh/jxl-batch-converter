@@ -26,7 +26,7 @@ FORMS += \
     mainwindow.ui \
     utils/folderselectiondialog.ui
 
-VERSION = 0.5.3
+VERSION = 0.5.4
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 # Default rules for deployment.

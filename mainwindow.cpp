@@ -760,16 +760,6 @@ void MainWindow::convertBtnPressed()
         return;
     }
 
-    QFileInfo inFUrl(inputFileDir->text());
-    if (!inFUrl.exists()) {
-        dumpLogs(QString("Error: input file/dir doesn't exist!"), errLogCol, LogCode::INFO);
-        resetUi();
-        progressBar->setVisible(false);
-        return;
-    }
-
-    encOptions.insert("directoryInput", inputFileDir->text());
-
     const QString binPath = [&]() {
         switch (selectionTabWdg->currentIndex()) {
         case 0:
@@ -831,6 +821,15 @@ void MainWindow::convertBtnPressed()
 
         const QString inFUrl = inputFileDir->text();
         QFileInfo inFile(inFUrl);
+
+        if (!inFile.exists()) {
+            dumpLogs(QString("Error: input file/dir doesn't exist!"), errLogCol, LogCode::INFO);
+            resetUi();
+            progressBar->setVisible(false);
+            return;
+        }
+
+        encOptions.insert("directoryInput", inFUrl);
 
         QDir inUrl;
         if (inFile.isFile()) {

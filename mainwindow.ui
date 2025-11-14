@@ -1292,7 +1292,7 @@ Press &quot;Print help&quot; to see available flags.</string>
             <bool>false</bool>
            </property>
            <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This option will attempt to rename non-ASCII files before conversion as a workaround for libjxl bug.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This option will attempt to rename non-ASCII files before conversion as a workaround for libjxl bug in Windows OS.&lt;/p&gt;&lt;p&gt;Note: If enabled, this tool will create a temporary folder in the same folder as the binary for storing temporary input/output images during conversion. Please make sure the folder has a sufficient write permission.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
            <property name="text">
             <string>(Windows) Process non-ASCII filenames</string>

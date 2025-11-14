@@ -234,20 +234,6 @@ void ConversionThread::run()
      */
     QProcess cjxlBin;
 
-    QString inFUrl;
-    inFUrl = m_fin;
-
-    QFileInfo inFileFirst(inFUrl);
-
-    QDir inUrl;
-    if (inFileFirst.isFile()) {
-        inUrl.setPath(inFileFirst.absolutePath());
-    } else {
-        inUrl.setPath(inFileFirst.absoluteFilePath());
-    }
-
-    const QString basePath = inUrl.absolutePath();
-
     if (m_processNonAscii) {
         if (!QDir("./jxl-batch-temp").exists()) {
             QDir(".").mkpath("./jxl-batch-temp");
@@ -285,11 +271,26 @@ void ConversionThread::run()
 
         const QFileInfo inFile(fin);
 
-        const QString extraDirName = QString(inFile.absolutePath()).remove(basePath);
         const QDir outFUrl = [&]() {
             if (m_useFileList) {
                 return QDir::cleanPath(m_fout);
             }
+
+            QString inFUrl;
+            inFUrl = m_fin;
+
+            QFileInfo inFileFirst(inFUrl);
+
+            QDir inUrl;
+            if (inFileFirst.isFile()) {
+               inUrl.setPath(inFileFirst.absolutePath());
+            } else {
+               inUrl.setPath(inFileFirst.absoluteFilePath());
+            }
+
+            const QString basePath = inUrl.absolutePath();
+            const QString extraDirName = QString(inFile.absolutePath()).remove(basePath);
+
             return QDir::cleanPath(m_fout + extraDirName);
         }();
         if (!outFUrl.exists()) {
